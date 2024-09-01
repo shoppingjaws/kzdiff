@@ -1,7 +1,5 @@
 package lib
 
-import "path/filepath"
-
 type Command struct {
 	Bin  string
 	Args []string
@@ -10,7 +8,7 @@ type Command struct {
 func KustomizeCommandBuilder(c Config, t BuildTarget) Command {
 	options := []string{"build"}
 	options = append(options, c.KustomizeBuildOptions...)
-	options = append(options, filepath.Dir(t.Filename))
+	options = append(options, t.FullPath)
 	return Command{
 		Bin:  "kustomize",
 		Args: options,

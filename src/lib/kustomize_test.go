@@ -10,7 +10,7 @@ import (
 var config = lib.Config{
 	DyffPath:              "/path/to/dyff",
 	KustomizeBuildOptions: []string{"--enable-helm", "--load-restrictor", "LoadRestrictionsNone"},
-	ComparedBranch:        "main",
+	ComparedUri:           "main",
 	KustomziePathPattern:  "overlays/**/kustomization.(yaml|yml)",
 	HistorySize:           10,
 	RepositoryName:        "workspace",

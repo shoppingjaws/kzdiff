@@ -10,10 +10,13 @@ import (
 
 type Config struct {
 	DyffPath              string
+	DyffBetweenOptions    []string
 	KustomziePathPattern  string
 	KustomizeBuildOptions []string
 	TmpDirPath            string
+	ComparedUri           string
 	ComparedBranch        string
+	TokenName             string
 	RepositoryName        string
 	HistorySize           int
 }
@@ -37,14 +40,20 @@ func LoadConfig() Config {
 	// load config and set default values
 	// DyffPath
 	dyffPath := section.Key("dyff_path").MustString("dyff")
+	// DyffBetweenOptions
+	dyffBuildOptions := section.Key("dyff_build_options").Strings(",")
 	// KustomizePathPattern
 	kustomizePathPattern := section.Key("kustomize_path_pattern").MustString("overlays/**/kustomization.(yaml|yml)")
 	// KustomizeOptions
 	kustomizeBuildOptions := section.Key("kustomize_build_options").Strings(",")
 	// TmpDirPath
 	tmpDirPath := section.Key("tmp_dir_path").MustString(os.Getenv("TMPDIR"))
+	// ComparedUri
+	comparedUri := section.Key("compared_uri").MustString("")
 	// ComparedBranch
 	comparedBranch := section.Key("compared_branch").MustString("main")
+	// TokenName
+	tokenName := section.Key("token_name").MustString("GITHUB_TOKEN")
 	// WorkspaceName
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -56,16 +65,22 @@ func LoadConfig() Config {
 	historySize := section.Key("history_size").MustInt(10)
 	config := Config{
 		DyffPath:              dyffPath,
+		DyffBetweenOptions:    dyffBuildOptions,
 		KustomziePathPattern:  kustomizePathPattern,
 		KustomizeBuildOptions: kustomizeBuildOptions,
 		TmpDirPath:            tmpDirPath,
+		ComparedUri:           comparedUri,
 		ComparedBranch:        comparedBranch,
+		TokenName:             tokenName,
 		RepositoryName:        workspaceName,
 		HistorySize:           historySize,
 	}
 	return config
 }
 
-func (c *Config) GetOutputDir() string {
-	return (c.TmpDirPath + c.RepositoryName + "/" + "current/" + GetTiemstamp())
+func (c *Config) GetCurrentOutputDir() string {
+	return (c.TmpDirPath + c.RepositoryName + "/current/" + GetTiemstamp())
+}
+func (c *Config) GetRemoteOutputDir() string {
+	return (c.TmpDirPath + c.RepositoryName + "/remote/" + c.ComparedBranch)
 }

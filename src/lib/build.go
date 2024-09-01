@@ -8,11 +8,20 @@ import (
 	"sync"
 )
 
-func BuildCurrent(c Config) {
+func Build(c Config, remote bool) {
 	var wg sync.WaitGroup
-	os.MkdirAll(c.GetOutputDir(), 0755)
-	destDir := c.GetOutputDir()
-	targets := ListBuildTargets(c)
+	destDir := ""
+	var targets = []BuildTarget{}
+	if remote { // with branch option
+		slog.Debug("Build remotely")
+		destDir = c.GetRemoteOutputDir()
+		targets = ListBuildRemoteTargets(c)
+	} else { // withou branch option
+		destDir = c.GetCurrentOutputDir()
+		targets = ListBuildTargets(c)
+	}
+	slog.Debug("destDir:" + destDir)
+	os.MkdirAll(destDir, 0755)
 	for _, t := range targets {
 		wg.Add(1)
 		go func(t BuildTarget) {
@@ -37,12 +46,9 @@ func BuildCurrent(c Config) {
 	wg.Wait()
 }
 
-func BuildRemote(c Config, branch string) {
-	
-}
-
 type BuildTarget struct {
 	Filename string
+	FullPath string
 }
 
 func ListBuildTargets(c Config) []BuildTarget {
@@ -52,7 +58,25 @@ func ListBuildTargets(c Config) []BuildTarget {
 	}
 	list := []BuildTarget{}
 	for _, entry := range entries {
-		list = append(list, BuildTarget{Filename: entry})
+		list = append(list, BuildTarget{Filename: entry, FullPath: filepath.Dir(entry)})
+	}
+	return list
+}
+
+func ListBuildRemoteTargets(c Config) []BuildTarget {
+	entries, err := filepath.Glob(c.KustomziePathPattern)
+	if err != nil {
+		slog.Error(err.Error())
+	}
+	list := []BuildTarget{}
+	// if token is not empty, then set token = ${TOKEN}@
+	token := os.Getenv(c.TokenName)
+	if token != "" {
+		slog.Debug(c.TokenName + "is set")
+		token = token + "@"
+	}
+	for _, entry := range entries {
+		list = append(list, BuildTarget{Filename: entry, FullPath: `https://` + token + c.ComparedUri + "/" + filepath.Dir(entry)})
 	}
 	return list
 }

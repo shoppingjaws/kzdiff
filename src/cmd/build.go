@@ -9,23 +9,22 @@ import (
 )
 
 type Build struct {
-	branch string
+	remote bool
 }
 
 func (*Build) Name() string     { return "build" } // サブコマンド名指定
 func (*Build) Synopsis() string { return "run kustomize build in pararell" }
 func (*Build) Usage() string {
-	return `build [-branch] <branch name>:
-	run kustomize build in pararell.
-	without -branch option, run current branches.
+	return `build [-remote]:
+	run kustomize build.
 `
 }
 
 func (p *Build) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&p.branch, "branch", "", "branch name")
+	f.BoolVar(&p.remote, "remote", false, "build with remote repository")
 }
 
 func (p *Build) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	lib.BuildCurrent(lib.LoadConfig())
+	lib.Build(lib.LoadConfig(), p.remote)
 	return subcommands.ExitSuccess
 }
