@@ -18,6 +18,7 @@ func main() {
 	subcommands.Register(&cmd.Doctor{}, "")
 	subcommands.Register(&cmd.List{}, "")
 	subcommands.Register(&cmd.Build{}, "")
+	subcommands.Register(&cmd.Compare{}, "")
 	flag.Parse()
 	ctx := context.Background()
 	os.Exit(int(subcommands.Execute(ctx)))

@@ -41,7 +41,7 @@ func LoadConfig() Config {
 	// DyffPath
 	dyffPath := section.Key("dyff_path").MustString("dyff")
 	// DyffBetweenOptions
-	dyffBuildOptions := section.Key("dyff_build_options").Strings(",")
+	dyffBetweenOptions := section.Key("dyff_between_options").Strings(",")
 	// KustomizePathPattern
 	kustomizePathPattern := section.Key("kustomize_path_pattern").MustString("overlays/**/kustomization.(yaml|yml)")
 	// KustomizeOptions
@@ -65,7 +65,7 @@ func LoadConfig() Config {
 	historySize := section.Key("history_size").MustInt(10)
 	config := Config{
 		DyffPath:              dyffPath,
-		DyffBetweenOptions:    dyffBuildOptions,
+		DyffBetweenOptions:    dyffBetweenOptions,
 		KustomziePathPattern:  kustomizePathPattern,
 		KustomizeBuildOptions: kustomizeBuildOptions,
 		TmpDirPath:            tmpDirPath,

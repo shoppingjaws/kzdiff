@@ -9,6 +9,7 @@ import (
 
 var config = lib.Config{
 	DyffPath:              "/path/to/dyff",
+	DyffBetweenOptions:    []string{"--omit-header"},
 	KustomizeBuildOptions: []string{"--enable-helm", "--load-restrictor", "LoadRestrictionsNone"},
 	ComparedUri:           "main",
 	KustomziePathPattern:  "overlays/**/kustomization.(yaml|yml)",
@@ -18,6 +19,6 @@ var config = lib.Config{
 }
 
 func TestKustomizeCommandBuilder(t *testing.T) {
-	command := lib.KustomizeCommandBuilder(config, lib.BuildTarget{Filename: "/path/to/kustomization.yaml"})
+	command := lib.KustomizeCommandBuilder(config, lib.BuildTarget{Filename: "/path/to/kustomization.yaml", FullPath: "/path/to"})
 	assert.Equal(t, "kustomize build --enable-helm --load-restrictor LoadRestrictionsNone /path/to", command.ToString())
 }
