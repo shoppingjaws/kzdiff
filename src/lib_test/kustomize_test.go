@@ -14,7 +14,7 @@ var config = lib.Config{
 	ComparedUri:           "main",
 	KustomziePathPattern:  "overlays/**/kustomization.(yaml|yml)",
 	HistorySize:           10,
-	RepositoryName:        "workspace",
+	WorkspaceName:         "workspace",
 	TmpDirPath:            "/tmp",
 }
 

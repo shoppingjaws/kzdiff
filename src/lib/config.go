@@ -17,8 +17,9 @@ type Config struct {
 	ComparedUri           string
 	ComparedBranch        string
 	TokenName             string
-	RepositoryName        string
+	WorkspaceName         string
 	HistorySize           int
+	Debug                 bool
 }
 
 // Configファイル読み込み
@@ -72,15 +73,15 @@ func LoadConfig() Config {
 		ComparedUri:           comparedUri,
 		ComparedBranch:        comparedBranch,
 		TokenName:             tokenName,
-		RepositoryName:        workspaceName,
+		WorkspaceName:         workspaceName,
 		HistorySize:           historySize,
 	}
 	return config
 }
 
 func (c *Config) GetCurrentOutputDir() string {
-	return (c.TmpDirPath + c.RepositoryName + "/current/" + GetTiemstamp())
+	return (c.TmpDirPath + c.WorkspaceName + "/current/" + GetTiemstamp())
 }
 func (c *Config) GetRemoteOutputDir() string {
-	return (c.TmpDirPath + c.RepositoryName + "/remote/" + c.ComparedBranch)
+	return (c.TmpDirPath + c.WorkspaceName + "/remote/" + c.ComparedBranch)
 }

@@ -10,26 +10,26 @@ import (
 )
 
 func DeleteOversizedHistory(c Config) {
-	entry, _ := os.ReadDir(c.TmpDirPath + c.RepositoryName + "/current/")
+	entry, _ := os.ReadDir(c.TmpDirPath + c.WorkspaceName + "/current/")
 	if len(entry) > c.HistorySize {
 		slog.Debug("HistorySize is over")
 	}
 }
 
 func GetRemoteDir(c Config) string {
-	return c.TmpDirPath + c.RepositoryName + "/remote/" + c.ComparedBranch
+	return c.TmpDirPath + c.WorkspaceName + "/remote/" + c.ComparedBranch
 }
 
 func GetCurrentLatestDir(c Config) string {
-	entries, _ := os.ReadDir(c.TmpDirPath + c.RepositoryName + "/current/")
+	entries, _ := os.ReadDir(c.TmpDirPath + c.WorkspaceName + "/current/")
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Name() > entries[j].Name()
 	})
-	return c.TmpDirPath + c.RepositoryName + "/current/" + entries[0].Name()
+	return c.TmpDirPath + c.WorkspaceName + "/current/" + entries[0].Name()
 }
 
 func GetOutputDir(c Config) string {
-	dir := c.TmpDirPath + c.RepositoryName + "/output/"
+	dir := c.TmpDirPath + c.WorkspaceName + "/output/"
 	return dir
 }
 

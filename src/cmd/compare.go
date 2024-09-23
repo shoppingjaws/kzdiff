@@ -9,6 +9,7 @@ import (
 )
 
 type Compare struct {
+	Config lib.Config
 }
 
 func (*Compare) Name() string     { return "compare" } // サブコマンド名指定
