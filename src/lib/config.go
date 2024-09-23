@@ -15,7 +15,7 @@ type Config struct {
 	KustomziePathPattern  string
 	KustomizeBuildOptions []string
 	TmpDirPath            string
-	ComparedUri           string
+	RemoteUri             string
 	ComparedBranch        string
 	GithubTokenName       string
 	WorkspaceName         string
@@ -76,6 +76,12 @@ func LoadConfig(c *Config) Config {
 	if c.TmpDirPath != "" {
 		tmpDirPath = c.TmpDirPath
 	}
+	// RemoteUri
+	var remoteUri string
+	remoteUri = section.Key("remote_uri").MustString("")
+	if c.RemoteUri != "" {
+		remoteUri = c.RemoteUri
+	}
 
 	// ComparedBranch
 	var comparedBranch string
@@ -122,6 +128,7 @@ func LoadConfig(c *Config) Config {
 		KustomziePathPattern:  kustomizePathPattern,
 		KustomizeBuildOptions: kustomizeBuildOptions,
 		TmpDirPath:            tmpDirPath,
+		RemoteUri:             remoteUri,
 		ComparedBranch:        comparedBranch,
 		GithubTokenName:       githubTokenName,
 		WorkspaceName:         workspaceName,
@@ -143,13 +150,13 @@ func (c *Config) GetRemoteOutputDir() string {
 }
 
 func SetCommonFlags(f *flag.FlagSet, c *Config) {
-	f.StringVar(&c.DyffPath, "dyff_path", "dyff", "dyff command path")
-	f.StringVar(&c.KustomziePathPattern, "kustomize_path_pattern", "overlays/**/kustomization.(yaml|yml)", "kustomize path pattern")
-	f.StringVar(&c.TmpDirPath, "tmp_dir_path", os.Getenv("TMPDIR"), "tmp dir path. default is $TMPDIR")
-	f.StringVar(&c.ComparedUri, "compared_uri", "", "compared uri (e.g. github.com/owner/repo)")
+	f.StringVar(&c.DyffPath, "dyff_path", "", "dyff command path")
+	f.StringVar(&c.KustomziePathPattern, "kustomize_path_pattern", "", "kustomize path pattern")
+	f.StringVar(&c.TmpDirPath, "tmp_dir_path", "", "tmp dir path. default is $TMPDIR")
+	f.StringVar(&c.RemoteUri, "remote_uri", "", "remote uri")
 	f.StringVar(&c.ComparedBranch, "compared_branch", "main", "compared branch")
 	f.StringVar(&c.GithubTokenName, "github_token_name", "", "github token environment variable name")
-	f.StringVar(&c.WorkspaceName, "workspace_name", "kzdiff", "workspace name")
-	f.IntVar(&c.HistorySize, "history_size", 10, "history size")
+	f.StringVar(&c.WorkspaceName, "workspace_name", "", "workspace name")
+	f.IntVar(&c.HistorySize, "history_size", 0, "history size")
 	f.BoolVar(&c.Debug, "debug", false, "debug mode")
 }

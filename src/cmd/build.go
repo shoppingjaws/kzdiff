@@ -9,8 +9,8 @@ import (
 )
 
 type Build struct {
-	config    lib.Config
-	remoteUri string
+	config lib.Config
+	remote bool
 }
 
 func (*Build) Name() string     { return "build" } // サブコマンド名指定
@@ -22,12 +22,12 @@ func (*Build) Usage() string {
 }
 
 func (p *Build) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&p.remoteUri, "remote_uri", "", "build with remote repository uri (e.g. github.com/owner/repo)")
 	lib.SetCommonFlags(f, &p.config)
+	f.BoolVar(&p.remote, "remote", false, "build remotely")
 }
 
 func (p *Build) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	config := lib.LoadConfig(&p.config)
-	lib.Build(&config, &p.remoteUri)
+	lib.Build(&config, &p.remote)
 	return subcommands.ExitSuccess
 }

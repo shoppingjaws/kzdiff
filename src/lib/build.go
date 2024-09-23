@@ -8,14 +8,17 @@ import (
 	"sync"
 )
 
-func Build(c *Config, remoteUri *string) {
+func Build(c *Config, isRemote *bool) {
 	var wg sync.WaitGroup
 	destDir := ""
 	var targets = []BuildTarget{}
-	if *remoteUri != "" { // with branch option
+	if *isRemote { // with branch option
 		slog.Debug("Build remotely")
+		if c.RemoteUri == "" {
+			panic("remote_uri is not set")
+		}
 		destDir = c.GetRemoteOutputDir()
-		targets = ListBuildRemoteTargets(c)
+		targets = ListBuildRemoteTargets(c, c.RemoteUri)
 	} else { // withou branch option
 		slog.Debug("Build locally")
 		destDir = c.GetCurrentOutputDir()
@@ -61,10 +64,11 @@ func ListBuildTargets(c *Config) []BuildTarget {
 	for _, entry := range entries {
 		list = append(list, BuildTarget{Filename: entry, FullPath: filepath.Dir(entry)})
 	}
+	slog.Debug("ListBuildTargets", slog.Any("list", list))
 	return list
 }
 
-func ListBuildRemoteTargets(c *Config) []BuildTarget {
+func ListBuildRemoteTargets(c *Config, uri string) []BuildTarget {
 	entries, err := filepath.Glob(c.KustomziePathPattern)
 	if err != nil {
 		slog.Error(err.Error())
@@ -77,7 +81,7 @@ func ListBuildRemoteTargets(c *Config) []BuildTarget {
 		token = token + "@"
 	}
 	for _, entry := range entries {
-		list = append(list, BuildTarget{Filename: entry, FullPath: `https://` + token + c.ComparedUri + "/" + filepath.Dir(entry)})
+		list = append(list, BuildTarget{Filename: entry, FullPath: `https://` + token + uri + "/" + filepath.Dir(entry)})
 	}
 	return list
 }

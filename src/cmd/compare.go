@@ -28,8 +28,8 @@ func (p *Compare) SetFlags(f *flag.FlagSet) {
 func (p *Compare) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	slog.Debug(p.config.DyffPath)
 	config := lib.LoadConfig(&p.config)
-	fromPath := lib.GetRemoteDir(config)
-	toPath := lib.GetCurrentLatestDir(config)
+	fromPath := lib.GetRemoteDir(&config)
+	toPath := lib.GetCurrentLatestDir(&config)
 	lib.Compare(config, fromPath, toPath)
 	return subcommands.ExitSuccess
 }

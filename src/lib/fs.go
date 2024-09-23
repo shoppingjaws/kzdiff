@@ -16,11 +16,11 @@ func DeleteOversizedHistory(c Config) {
 	}
 }
 
-func GetRemoteDir(c Config) string {
+func GetRemoteDir(c *Config) string {
 	return c.TmpDirPath + c.WorkspaceName + "/remote/" + c.ComparedBranch
 }
 
-func GetCurrentLatestDir(c Config) string {
+func GetCurrentLatestDir(c *Config) string {
 	entries, _ := os.ReadDir(c.TmpDirPath + c.WorkspaceName + "/current/")
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Name() > entries[j].Name()
@@ -28,12 +28,12 @@ func GetCurrentLatestDir(c Config) string {
 	return c.TmpDirPath + c.WorkspaceName + "/current/" + entries[0].Name()
 }
 
-func GetOutputDir(c Config) string {
+func GetOutputDir(c *Config) string {
 	dir := c.TmpDirPath + c.WorkspaceName + "/output/"
 	return dir
 }
 
-func ClearOutputDir(c Config) {
+func ClearOutputDir(c *Config) {
 	os.RemoveAll(GetOutputDir(c))
 }
 

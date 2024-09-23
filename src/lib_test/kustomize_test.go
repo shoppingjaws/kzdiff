@@ -11,7 +11,6 @@ var config = lib.Config{
 	DyffPath:              "/path/to/dyff",
 	DyffBetweenOptions:    []string{"--omit-header"},
 	KustomizeBuildOptions: []string{"--enable-helm", "--load-restrictor", "LoadRestrictionsNone"},
-	ComparedUri:           "main",
 	KustomziePathPattern:  "overlays/**/kustomization.(yaml|yml)",
 	HistorySize:           10,
 	WorkspaceName:         "workspace",
