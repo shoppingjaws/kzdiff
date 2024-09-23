@@ -9,22 +9,25 @@ import (
 )
 
 type Build struct {
-	remote bool
+	config    lib.Config
+	remoteUri string
 }
 
 func (*Build) Name() string     { return "build" } // サブコマンド名指定
 func (*Build) Synopsis() string { return "run kustomize build in pararell" }
 func (*Build) Usage() string {
-	return `build [-remote]:
+	return `build [-remote_uri]:
 	run kustomize build.
 `
 }
 
 func (p *Build) SetFlags(f *flag.FlagSet) {
-	f.BoolVar(&p.remote, "remote", false, "build with remote repository")
+	f.StringVar(&p.remoteUri, "remote_uri", "", "build with remote repository uri (e.g. github.com/owner/repo)")
+	lib.SetCommonFlags(f, &p.config)
 }
 
 func (p *Build) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	lib.Build(lib.LoadConfig(), p.remote)
+	config := lib.LoadConfig(&p.config)
+	lib.Build(&config, &p.remoteUri)
 	return subcommands.ExitSuccess
 }

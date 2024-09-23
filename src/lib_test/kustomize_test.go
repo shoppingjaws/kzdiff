@@ -19,6 +19,6 @@ var config = lib.Config{
 }
 
 func TestKustomizeCommandBuilder(t *testing.T) {
-	command := lib.KustomizeCommandBuilder(config, lib.BuildTarget{Filename: "/path/to/kustomization.yaml", FullPath: "/path/to"})
+	command := lib.KustomizeCommandBuilder(&config, lib.BuildTarget{Filename: "/path/to/kustomization.yaml", FullPath: "/path/to"})
 	assert.Equal(t, "kustomize build --enable-helm --load-restrictor LoadRestrictionsNone /path/to", command.ToString())
 }

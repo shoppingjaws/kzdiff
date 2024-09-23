@@ -8,15 +8,16 @@ import (
 	"sync"
 )
 
-func Build(c Config, remote bool) {
+func Build(c *Config, remoteUri *string) {
 	var wg sync.WaitGroup
 	destDir := ""
 	var targets = []BuildTarget{}
-	if remote { // with branch option
+	if *remoteUri != "" { // with branch option
 		slog.Debug("Build remotely")
 		destDir = c.GetRemoteOutputDir()
 		targets = ListBuildRemoteTargets(c)
 	} else { // withou branch option
+		slog.Debug("Build locally")
 		destDir = c.GetCurrentOutputDir()
 		targets = ListBuildTargets(c)
 	}
@@ -51,7 +52,7 @@ type BuildTarget struct {
 	FullPath string
 }
 
-func ListBuildTargets(c Config) []BuildTarget {
+func ListBuildTargets(c *Config) []BuildTarget {
 	entries, err := filepath.Glob(c.KustomziePathPattern)
 	if err != nil {
 		slog.Error(err.Error())
@@ -63,16 +64,16 @@ func ListBuildTargets(c Config) []BuildTarget {
 	return list
 }
 
-func ListBuildRemoteTargets(c Config) []BuildTarget {
+func ListBuildRemoteTargets(c *Config) []BuildTarget {
 	entries, err := filepath.Glob(c.KustomziePathPattern)
 	if err != nil {
 		slog.Error(err.Error())
 	}
 	list := []BuildTarget{}
 	// if token is not empty, then set token = ${TOKEN}@
-	token := os.Getenv(c.TokenName)
+	token := os.Getenv(c.GithubTokenName)
 	if token != "" {
-		slog.Debug(c.TokenName + "is set")
+		slog.Debug(c.GithubTokenName + "is set")
 		token = token + "@"
 	}
 	for _, entry := range entries {

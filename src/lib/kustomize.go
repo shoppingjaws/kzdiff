@@ -5,7 +5,7 @@ type Command struct {
 	Args []string
 }
 
-func KustomizeCommandBuilder(c Config, t BuildTarget) Command {
+func KustomizeCommandBuilder(c *Config, t BuildTarget) Command {
 	options := []string{"build"}
 	options = append(options, c.KustomizeBuildOptions...)
 	options = append(options, t.FullPath)
