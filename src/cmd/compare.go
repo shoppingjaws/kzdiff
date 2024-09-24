@@ -13,8 +13,8 @@ type Compare struct {
 	config lib.Config
 }
 
-func (*Compare) Name() string     { return "compare" } // サブコマンド名指定
-func (*Compare) Synopsis() string { return "compare" }
+func (*Compare) Name() string     { return "compare" }
+func (*Compare) Synopsis() string { return "compare the build result" }
 func (*Compare) Usage() string {
 	return `compare:
 	Compare the build result.

@@ -23,7 +23,7 @@ func Compare(c Config, fromPath string, toPath string) {
 	updated, deleted, created := ListBuildResults(c, fromPath, toPath)
 	if len(updated)+len(deleted)+len(created) == 0 {
 		slog.Debug("Comparing with " + fromPath + " and " + toPath)
-		panic("No build results. run kzdiff build")
+		panic("No build results. run kzdiff build / build -remote_uri=***")
 	}
 	os.Mkdir(GetOutputDir(&c), 0755)
 	var wg sync.WaitGroup

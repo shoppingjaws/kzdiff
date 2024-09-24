@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log/slog"
 	"os"
-	"path/filepath"
 
 	ini "gopkg.in/ini.v1"
 )
@@ -24,102 +23,126 @@ type Config struct {
 }
 
 // Configファイル読み込み
-func LoadConfig(c *Config) Config {
+func LoadConfig(args *Config) Config {
 	// load kzdiff.ini file
-	kzdiff_config_path := os.Getenv("KZDIFF_CONFIG_PATH")
-	if kzdiff_config_path != "" {
-		ini.Load(kzdiff_config_path)
-	} else {
+	var kzdiff_config_path string
+	kzdiff_config_path = os.Getenv("KZDIFF_CONFIG_PATH")
+	if kzdiff_config_path == "" {
 		kzdiff_config_path = "kzdiff.ini"
 	}
 	cfg, err := ini.Load(kzdiff_config_path)
-	if err != nil {
-		slog.Error(err.Error())
+	var iniConfig = Config{
+		DyffPath:              "dyff",
+		DyffBetweenOptions:    []string{},
+		KustomziePathPattern:  "overlays/**/kustomization.(yaml|yml)",
+		KustomizeBuildOptions: []string{},
+		TmpDirPath:            os.Getenv("TMPDIR"),
+		RemoteUri:             "",
+		ComparedBranch:        "main",
+		GithubTokenName:       os.Getenv("GITHUB_TOKEN"),
+		WorkspaceName:         "kzdiff",
+		HistorySize:           10,
+		Debug:                 false,
 	}
-	section, err := cfg.GetSection("kzdiff")
-	if err != nil {
-		slog.Error(err.Error())
+	if err == nil {
+		section, err := cfg.GetSection("kzdiff")
+		if err != nil {
+			panic(err)
+		}
+		iniConfig = Config{
+			DyffPath:              section.Key("dyff_path").MustString(""),
+			DyffBetweenOptions:    section.Key("dyff_between_options").Strings(","),
+			KustomziePathPattern:  section.Key("kustomize_path_pattern").MustString(""),
+			KustomizeBuildOptions: section.Key("kustomize_build_options").Strings(","),
+			TmpDirPath:            section.Key("tmp_dir_path").MustString(""),
+			RemoteUri:             section.Key("remote_uri").MustString(""),
+			ComparedBranch:        section.Key("compared_branch").MustString(""),
+			GithubTokenName:       section.Key("github_token_name").MustString(""),
+			WorkspaceName:         section.Key("workspace_name").MustString(""),
+			HistorySize:           section.Key("history_size").MustInt(0),
+			Debug:                 section.Key("debug").MustBool(false),
+		}
+		// load config and set default values
 	}
-	// load config and set default values
 
 	// DyffPath
 	var dyffPath string
-	dyffPath = section.Key("dyff_path").MustString("dyff")
-	if c.DyffPath != "" {
-		dyffPath = c.DyffPath
+	dyffPath = iniConfig.DyffPath
+	if args.DyffPath != "" {
+		dyffPath = args.DyffPath
 	}
 
 	// DyffBetweenOptions
 	var dyffBetweenOptions []string
-	dyffBetweenOptions = section.Key("dyff_between_options").Strings(",")
-	if len(c.DyffBetweenOptions) > 0 {
-		dyffBetweenOptions = c.DyffBetweenOptions
+	dyffBetweenOptions = iniConfig.DyffBetweenOptions
+	if len(args.DyffBetweenOptions) > 0 {
+		dyffBetweenOptions = args.DyffBetweenOptions
 	}
 
 	// KustomizePathPattern
 	var kustomizePathPattern string
-	kustomizePathPattern = section.Key("kustomize_path_pattern").MustString("overlays/**/kustomization.(yaml|yml)")
-	if c.KustomziePathPattern != "" {
-		kustomizePathPattern = c.KustomziePathPattern
+	kustomizePathPattern = iniConfig.KustomziePathPattern
+	if args.KustomziePathPattern != "" {
+		kustomizePathPattern = args.KustomziePathPattern
 	}
 
 	// KustomizeBuildOptions
 	var kustomizeBuildOptions []string
-	kustomizeBuildOptions = section.Key("kustomize_build_options").Strings(",")
-	if len(c.KustomizeBuildOptions) > 0 {
-		kustomizeBuildOptions = c.KustomizeBuildOptions
+	kustomizeBuildOptions = iniConfig.KustomizeBuildOptions
+	if len(args.KustomizeBuildOptions) > 0 {
+		kustomizeBuildOptions = args.KustomizeBuildOptions
 	}
 
 	// TmpDirPath
 	var tmpDirPath string
-	tmpDirPath = section.Key("tmp_dir_path").MustString(os.Getenv("TMPDIR"))
-	if c.TmpDirPath != "" {
-		tmpDirPath = c.TmpDirPath
+	tmpDirPath = iniConfig.TmpDirPath
+	if args.TmpDirPath != "" {
+		tmpDirPath = args.TmpDirPath
 	}
 	// RemoteUri
 	var remoteUri string
-	remoteUri = section.Key("remote_uri").MustString("")
-	if c.RemoteUri != "" {
-		remoteUri = c.RemoteUri
+	remoteUri = iniConfig.RemoteUri
+	if args.RemoteUri != "" {
+		remoteUri = args.RemoteUri
 	}
 
 	// ComparedBranch
 	var comparedBranch string
-	comparedBranch = section.Key("compared_branch").MustString("main")
-	if c.ComparedBranch != "" {
-		comparedBranch = c.ComparedBranch
+	comparedBranch = iniConfig.ComparedBranch
+	if args.ComparedBranch != "" {
+		comparedBranch = args.ComparedBranch
 	}
 
 	// TokenName
 	var githubTokenName string
-	githubTokenName = section.Key("token_name").MustString("GITHUB_TOKEN")
-	if c.GithubTokenName != "" {
-		githubTokenName = c.GithubTokenName
+	githubTokenName = iniConfig.GithubTokenName
+	if args.GithubTokenName != "" {
+		githubTokenName = args.GithubTokenName
 	}
 
 	// WorkspaceName
 	var workspaceName string
-	currentDir, err := os.Getwd()
-	if err != nil {
-		slog.Error(err.Error())
-	}
-	dirName := filepath.Base(currentDir)
-	workspaceName = section.Key("workspace_name").MustString(dirName)
-	if c.WorkspaceName != "" {
-		workspaceName = c.WorkspaceName
+	// currentDir, err := os.Getwd()
+	// if err != nil {
+	// 	slog.Error(err.Error())
+	// }
+	// dirName := filepath.Base(currentDir)
+	workspaceName = iniConfig.WorkspaceName
+	if args.WorkspaceName != "" {
+		workspaceName = args.WorkspaceName
 	}
 
 	// HistorySize
 	var historySize int
-	historySize = section.Key("history_size").MustInt(10)
-	if c.HistorySize != 0 {
-		historySize = c.HistorySize
+	historySize = iniConfig.HistorySize
+	if args.HistorySize != 0 {
+		historySize = args.HistorySize
 	}
 	// Debug
 	var debug bool
-	debug = section.Key("debug").MustBool(false)
-	if c.Debug {
-		debug = c.Debug
+	debug = iniConfig.Debug
+	if args.Debug {
+		debug = args.Debug
 	}
 
 	config := Config{
