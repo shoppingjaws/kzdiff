@@ -11,16 +11,55 @@ Kustomize diff tool - Compare Kustomize build results between branches or direct
 
 ## Installation
 
+### Prerequisites
+
+- [Bun](https://bun.sh) runtime (for running the tool)
+- [Git](https://git-scm.com)
+- [Kustomize](https://kustomize.io)
+
+### Method 1: Install from npm (Recommended)
+
 ```bash
-# Clone the repository
+# Install globally with npm
+npm install -g kzdiff
+
+# Or with bun
+bun add -g kzdiff
+
+# Or use directly with npx/bunx
+npx kzdiff --help
+bunx kzdiff --help
+```
+
+### Method 2: Install from source
+
+```bash
+# Clone and install
 git clone https://github.com/shoppingjaws/kzdiff.git
 cd kzdiff
-
-# Install dependencies
 bun install
 
-# Install globally
+# Create global symlink
 bun link
+
+# Add ~/.bun/bin to your PATH if not already added
+echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.zshrc  # for zsh
+source ~/.zshrc
+```
+
+### Method 3: Standalone binary
+
+```bash
+# Clone and build
+git clone https://github.com/shoppingjaws/kzdiff.git
+cd kzdiff
+bun install
+
+# Create standalone executable
+bun run build:standalone
+
+# Move to your PATH
+sudo mv kzdiff /usr/local/bin/
 ```
 
 ## Usage

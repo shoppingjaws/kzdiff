@@ -1,0 +1,41 @@
+# Source files
+*.test.ts
+tests/
+
+# Build artifacts
+kzdiff-standalone
+kzdiff
+dist/
+
+# Git
+.git/
+.gitignore
+
+# Development
+test-repo/
+tmp/
+bun.lockb
+.bun/
+
+# CI/CD
+.github/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Documentation source
+docs/
+*.md
+!README.md
+
+# Configuration
+.claude/
+CLAUDE.md
+SPEC.md
+.envrc
+.mise.toml
+mise.toml

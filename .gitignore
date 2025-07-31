@@ -32,3 +32,15 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Standalone binaries
+kzdiff-standalone
+kzdiff
+
+# Test artifacts
+test-repo/
+tmp/
+
+# mise
+.mise.toml
+mise.toml

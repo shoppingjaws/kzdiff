@@ -1,16 +1,33 @@
 {
   "name": "kzdiff",
   "version": "0.1.0",
+  "description": "Compare Kustomize build results between branches",
+  "keywords": ["kustomize", "kubernetes", "diff", "k8s", "gitops"],
+  "homepage": "https://github.com/shoppingjaws/kzdiff",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shoppingjaws/kzdiff.git"
+  },
+  "license": "MIT",
+  "author": "shoppingjaws",
   "module": "src/kzdiff-cli.ts",
   "type": "module",
-  "private": true,
   "bin": {
     "kzdiff": "./src/kzdiff-cli.ts"
   },
+  "files": [
+    "src/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "bun test",
     "build": "bun build ./src/kzdiff-cli.ts --outdir ./dist --target bun",
-    "kzdiff": "bun run ./src/kzdiff-cli.ts"
+    "build:standalone": "bun build ./src/kzdiff-cli.ts --compile --outfile kzdiff",
+    "kzdiff": "bun run ./src/kzdiff-cli.ts",
+    "prepublishOnly": "bun test",
+    "install:local": "bun link",
+    "uninstall:local": "bun unlink"
   },
   "dependencies": {
     "chalk": "^5.3.0",
