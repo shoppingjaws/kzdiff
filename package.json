@@ -1,10 +1,24 @@
 {
   "name": "kzdiff",
-  "module": "index.ts",
+  "version": "0.1.0",
+  "module": "src/kzdiff-cli.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "kzdiff": "./src/kzdiff-cli.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "build": "bun build ./src/kzdiff-cli.ts --outdir ./dist --target bun",
+    "kzdiff": "bun run ./src/kzdiff-cli.ts"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "diff": "^5.1.0"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/diff": "^5.0.8"
   },
   "peerDependencies": {
     "typescript": "^5"
