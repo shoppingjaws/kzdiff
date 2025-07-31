@@ -1,11 +1,7 @@
 #!/usr/bin/env bun
 
 import { parseArgs } from "node:util";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { existsSync } from "node:fs";
-import { formatYamlDiff } from "./diff";
+import { kzdiff } from "./kzdiff";
 
 // Parse command line arguments
 const { values, positionals } = parseArgs({
@@ -59,108 +55,6 @@ Examples:
 `);
 }
 
-// Find kustomize executable
-async function findKustomize(): Promise<string> {
-  try {
-    const which = await Bun.$`which kustomize`.text();
-    return which.trim();
-  } catch {
-    // Try common locations
-    const paths = [
-      "/Users/shoppingjaws/.local/share/mise/installs/kustomize/5.7.0/kustomize",
-      "/usr/local/bin/kustomize",
-      "/opt/homebrew/bin/kustomize",
-    ];
-    
-    for (const path of paths) {
-      if (existsSync(path)) {
-        return path;
-      }
-    }
-    
-    throw new Error("kustomize not found. Please install kustomize.");
-  }
-}
-
-// Build from a directory
-async function buildKustomize(dir: string): Promise<string> {
-  const kustomizePath = await findKustomize();
-  return await Bun.$`cd ${dir} && ${kustomizePath} build .`.text();
-}
-
-// Compare local repository
-async function compareLocal(targetDir: string, baseBranch: string): Promise<void> {
-  // Check if in git repository
-  try {
-    await Bun.$`cd ${targetDir} && git rev-parse --git-dir`.quiet();
-  } catch {
-    throw new Error("Not in a git repository");
-  }
-
-  // Check if kustomization.yaml exists
-  if (!existsSync(join(targetDir, "kustomization.yaml"))) {
-    throw new Error("No kustomization.yaml found in target directory");
-  }
-
-  const tempDir = await mkdtemp(join(tmpdir(), "kzdiff-"));
-  
-  try {
-    // Get current branch and check for changes
-    const currentBranch = await Bun.$`cd ${targetDir} && git branch --show-current`.text();
-    const hasChanges = await Bun.$`cd ${targetDir} && git status --porcelain`.text();
-    const needsStash = hasChanges.trim().length > 0;
-
-    // Stash if needed
-    if (needsStash) {
-      await Bun.$`cd ${targetDir} && git stash push -m "kzdiff temporary"`.quiet();
-    }
-
-    try {
-      // Get base branch build
-      await Bun.$`cd ${targetDir} && git checkout ${baseBranch}`.quiet();
-      const baseBuild = await buildKustomize(targetDir);
-
-      // Get current branch build
-      await Bun.$`cd ${targetDir} && git checkout ${currentBranch.trim()}`.quiet();
-      if (needsStash) {
-        await Bun.$`cd ${targetDir} && git stash pop`.quiet();
-      }
-      const currentBuild = await buildKustomize(targetDir);
-
-      // Show diff
-      const diff = formatYamlDiff(baseBuild, currentBuild, baseBranch, "current", {
-        color: !values["no-color"],
-      });
-      console.log(diff);
-    } finally {
-      // Restore state
-      await Bun.$`cd ${targetDir} && git checkout ${currentBranch.trim()}`.quiet();
-      if (needsStash && await Bun.$`cd ${targetDir} && git stash list`.text().then(s => s.includes("kzdiff temporary"))) {
-        await Bun.$`cd ${targetDir} && git stash pop`.quiet();
-      }
-    }
-  } finally {
-    await rm(tempDir, { recursive: true, force: true });
-  }
-}
-
-// Compare remote repository
-async function compareRemote(repo: string, path: string, baseBranch: string): Promise<void> {
-  const tempDir = await mkdtemp(join(tmpdir(), "kzdiff-remote-"));
-  
-  try {
-    // Clone and build base branch
-    console.log(`Fetching ${baseBranch}...`);
-    await Bun.$`git clone --depth 1 --branch ${baseBranch} ${repo} ${tempDir}/base`.quiet();
-    const baseBuild = await buildKustomize(join(tempDir, "base", path));
-
-    // For remote, just show the build result for now
-    console.log(`Build result from ${baseBranch}:`);
-    console.log(baseBuild);
-  } finally {
-    await rm(tempDir, { recursive: true, force: true });
-  }
-}
 
 // Main
 async function main() {
@@ -175,15 +69,20 @@ async function main() {
   }
 
   try {
+    const baseBranch = values["base-branch"] as string;
+    const noColor = values["no-color"] as boolean;
+    
     if (values.remote) {
       // Remote mode
       const repo = values.remote as string;
       const path = positionals[2] || "/";
-      await compareRemote(repo, path, values["base-branch"] as string);
+      const result = await kzdiff(path, { remote: repo, baseBranch, noColor });
+      console.log(result);
     } else {
       // Local mode
       const targetDir = positionals[2] || process.cwd();
-      await compareLocal(targetDir, values["base-branch"] as string);
+      const result = await kzdiff(targetDir, { baseBranch, noColor });
+      console.log(result);
     }
   } catch (error) {
     console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);

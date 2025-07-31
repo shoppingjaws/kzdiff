@@ -1,18 +1,30 @@
-import { existsSync } from "node:fs";
 import { readFile, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { formatYamlDiff } from "./diff";
+import {
+  createTempDir,
+  checkGitRepository,
+  checkKustomizationExists,
+  buildKustomize,
+  getGitState,
+  stashChanges,
+  restoreStash,
+  checkoutBranch,
+  getGitRoot,
+} from "./utils";
 
 export interface KzdiffOptions {
   tmpDir?: string;
   baseBranch?: string;
+  remote?: string;
+  noColor?: boolean;
 }
 
 export async function kzdiff(
   targetDir: string,
   options: KzdiffOptions = {}
 ): Promise<string> {
-  const { baseBranch = "main" } = options;
+  const { baseBranch = "main", remote, noColor = false } = options;
 
   // If tmpDir is provided, assume test mode and use pre-built results
   if (options.tmpDir) {
@@ -26,24 +38,18 @@ export async function kzdiff(
       "utf-8"
     );
 
-    // Simple diff for now - just return both results
-    return `--- ${baseBranch}\n${fromResult}\n+++ current\n${toResult}`;
+    return formatYamlDiff(fromResult, toResult, baseBranch, "current", { color: !noColor });
   }
 
-  // Check if kustomization.yaml exists
-  const kustomizationPath = join(targetDir, "kustomization.yaml");
-  if (!existsSync(kustomizationPath)) {
-    throw new Error(`No kustomization.yaml found in ${targetDir}`);
+  // Remote comparison mode
+  if (remote) {
+    return await compareRemote(remote, targetDir, baseBranch, noColor);
   }
 
-  // Check if we're in a git repository
-  try {
-    await Bun.$`cd ${targetDir} && git rev-parse --git-dir`.quiet();
-  } catch (error) {
-    throw new Error(`${targetDir} is not in a git repository`);
-  }
+  // Local comparison mode
+  await checkKustomizationExists(targetDir);
+  await checkGitRepository(targetDir);
 
-  // Production mode: actual git operations
   const tmpDir = await createTempDir();
   
   try {
@@ -56,49 +62,45 @@ export async function kzdiff(
     await mkdir(fromResultDir, { recursive: true });
     await mkdir(toResultDir, { recursive: true });
 
-    // Get current branch and check for uncommitted changes
-    const currentBranch = await Bun.$`cd ${targetDir} && git branch --show-current`.text();
-    const hasChanges = await Bun.$`cd ${targetDir} && git status --porcelain`.text();
+    // Get current git state
+    const gitState = await getGitState(targetDir);
     
     // Stash changes if any
-    const needsStash = hasChanges.trim().length > 0;
-    if (needsStash) {
-      await Bun.$`cd ${targetDir} && git stash push -m "kzdiff temporary stash"`.quiet();
+    if (gitState.needsStash) {
+      await stashChanges(targetDir);
     }
 
     try {
       // Checkout base branch and copy files
-      await Bun.$`cd ${targetDir} && git checkout ${baseBranch}`.quiet();
-      const gitRoot = await Bun.$`cd ${targetDir} && git rev-parse --show-toplevel`.text();
-      await Bun.$`cp -r ${gitRoot.trim()}/* ${fromGitDir}/`.quiet();
+      await checkoutBranch(targetDir, baseBranch);
+      const gitRoot = await getGitRoot(targetDir);
+      await Bun.$`cp -r ${gitRoot}/* ${fromGitDir}/`.quiet();
 
       // Build from base branch
-      const relativeTarget = targetDir.replace(gitRoot.trim(), "").replace(/^\//, "");
+      const relativeTarget = targetDir.replace(gitRoot, "").replace(/^\//, "");
       const fromTargetDir = join(fromGitDir, relativeTarget);
-      const kustomizePath = await findKustomize();
-      const fromBuild = await Bun.$`cd ${fromTargetDir} && ${kustomizePath} build .`.text();
+      const fromBuild = await buildKustomize(fromTargetDir);
       await Bun.write(join(fromResultDir, "build.yaml"), fromBuild);
 
       // Checkout original branch
-      await Bun.$`cd ${targetDir} && git checkout ${currentBranch.trim()}`.quiet();
+      await checkoutBranch(targetDir, gitState.currentBranch);
       
       // Restore stashed changes if any
-      if (needsStash) {
-        await Bun.$`cd ${targetDir} && git stash pop`.quiet();
+      if (gitState.needsStash) {
+        await restoreStash(targetDir);
       }
 
       // Build from current state
-      const toBuild = await Bun.$`cd ${targetDir} && ${kustomizePath} build .`.text();
+      const toBuild = await buildKustomize(targetDir);
       await Bun.write(join(toResultDir, "build.yaml"), toBuild);
 
       // Generate diff
-      const diff = await generateDiff(fromBuild, toBuild, baseBranch);
-      return diff;
+      return formatYamlDiff(fromBuild, toBuild, baseBranch, "current", { color: !noColor });
     } catch (error) {
       // Restore original state if something went wrong
-      await Bun.$`cd ${targetDir} && git checkout ${currentBranch.trim()}`.quiet();
-      if (needsStash) {
-        await Bun.$`cd ${targetDir} && git stash pop`.quiet();
+      await checkoutBranch(targetDir, gitState.currentBranch);
+      if (gitState.needsStash) {
+        await restoreStash(targetDir);
       }
       throw error;
     }
@@ -108,27 +110,45 @@ export async function kzdiff(
   }
 }
 
-async function createTempDir(): Promise<string> {
-  const { mkdtemp } = await import("node:fs/promises");
-  const { tmpdir } = await import("node:os");
-  return mkdtemp(join(tmpdir(), "kzdiff-"));
-}
-
-async function findKustomize(): Promise<string> {
+async function compareRemote(repo: string, path: string, baseBranch: string, noColor: boolean): Promise<string> {
+  const tmpDir = await createTempDir("kzdiff-remote-");
+  
   try {
-    // Try to find kustomize in PATH
-    const which = await Bun.$`which kustomize`.text();
-    return which.trim();
-  } catch {
-    // Fallback to mise installation
-    const misePath = "/Users/shoppingjaws/.local/share/mise/installs/kustomize/5.7.0/kustomize";
-    if (existsSync(misePath)) {
-      return misePath;
+    // Clone base branch
+    const baseDir = join(tmpDir, "base");
+    await Bun.$`git clone --depth 1 --branch ${baseBranch} ${repo} ${baseDir}`.quiet();
+    const basePath = join(baseDir, path.startsWith("/") ? path.slice(1) : path);
+    
+    await checkKustomizationExists(basePath);
+    const baseBuild = await buildKustomize(basePath);
+    
+    // Clone main/master branch for comparison
+    const mainDir = join(tmpDir, "main");
+    const mainBranch = await getDefaultBranch(repo);
+    
+    if (mainBranch !== baseBranch) {
+      await Bun.$`git clone --depth 1 --branch ${mainBranch} ${repo} ${mainDir}`.quiet();
+      const mainPath = join(mainDir, path.startsWith("/") ? path.slice(1) : path);
+      
+      await checkKustomizationExists(mainPath);
+      const mainBuild = await buildKustomize(mainPath);
+      
+      return formatYamlDiff(baseBuild, mainBuild, baseBranch, mainBranch, { color: !noColor });
+    } else {
+      // If comparing same branch, just return the build
+      return baseBuild;
     }
-    throw new Error("kustomize not found. Please install kustomize.");
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
   }
 }
 
-async function generateDiff(fromContent: string, toContent: string, baseBranch: string): Promise<string> {
-  return formatYamlDiff(fromContent, toContent, baseBranch, "current");
+async function getDefaultBranch(repo: string): Promise<string> {
+  try {
+    const result = await Bun.$`git ls-remote --symref ${repo} HEAD`.text();
+    const match = result.match(/ref: refs\/heads\/(\S+)/);
+    return match?.[1] ?? "main";
+  } catch {
+    return "main";
+  }
 }
