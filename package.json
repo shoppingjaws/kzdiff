@@ -1,6 +1,6 @@
 {
   "name": "kzdiff",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Compare Kustomize build results between branches",
   "keywords": ["kustomize", "kubernetes", "diff", "k8s", "gitops"],
   "homepage": "https://github.com/shoppingjaws/kzdiff",
