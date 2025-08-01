@@ -10,23 +10,34 @@ const debug = createDebugLogger("kzdiff-cli");
 async function main() {
   const args = process.argv.slice(2);
   
-  if (args.length === 0) {
+  // Show help function
+  const showHelp = (exitCode: number = 0) => {
     const progName = process.argv[1]?.endsWith("kzdiff") ? "kzdiff" : "bun run index.ts";
-    console.error(`Usage: ${progName} <kustomize-path> [options...]`);
-    console.error("Options:");
-    console.error("  -b, --branch <ref>       Remote branch or commit to compare against");
-    console.error("  -r, --ref <ref>          Same as -b/--branch (default: auto-detect)");
-    console.error("  --                       Pass remaining arguments to kustomize");
-    console.error("");
-    console.error("Examples:");
-    console.error(`  ${progName} ./examples/overlays/prod`);
-    console.error(`  ${progName} ./examples/overlays/prod -b develop`);
-    console.error(`  ${progName} ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13`);
-    console.error(`  ${progName} ./examples/overlays/prod -- --enable-helm`);
-    console.error(`  ${progName} ./examples/overlays/prod -b staging -- --enable-helm`);
-    console.error("");
-    console.error("Note: When using commit hashes, use the full 40-character SHA");
-    process.exit(1);
+    console.log(`Usage: ${progName} <kustomize-path> [options...]`);
+    console.log("Options:");
+    console.log("  -b, --branch <ref>       Remote branch or commit to compare against");
+    console.log("  -r, --ref <ref>          Same as -b/--branch (default: auto-detect)");
+    console.log("  -h, --help               Show this help message");
+    console.log("  --                       Pass remaining arguments to kustomize");
+    console.log("");
+    console.log("Examples:");
+    console.log(`  ${progName} ./examples/overlays/prod`);
+    console.log(`  ${progName} ./examples/overlays/prod -b develop`);
+    console.log(`  ${progName} ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13`);
+    console.log(`  ${progName} ./examples/overlays/prod -- --enable-helm`);
+    console.log(`  ${progName} ./examples/overlays/prod -b staging -- --enable-helm`);
+    console.log("");
+    console.log("Note: When using commit hashes, use the full 40-character SHA");
+    process.exit(exitCode);
+  };
+  
+  // Check for help flag
+  if (args.includes("-h") || args.includes("--help")) {
+    showHelp(0);
+  }
+  
+  if (args.length === 0) {
+    showHelp(1);
   }
   
   const kustomizePath = args[0];

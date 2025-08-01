@@ -24,13 +24,13 @@ describe("kzdiff CLI", () => {
   
   describe("Basic functionality", () => {
     test("should show help when no arguments provided", async () => {
-      const { stderr, exitCode } = await runCLI([]);
+      const { stdout, exitCode } = await runCLI([]);
       
       expect(exitCode).toBe(1);
-      expect(stderr).toContain("Usage: bun run index.ts <kustomize-path>");
-      expect(stderr).toContain("Options:");
-      expect(stderr).toContain("-b, --branch");
-      expect(stderr).toContain("-r, --ref");
+      expect(stdout).toContain("Usage:");
+      expect(stdout).toContain("Options:");
+      expect(stdout).toContain("-b, --branch");
+      expect(stdout).toContain("-r, --ref");
     });
     
     test("should compare with auto-detected default branch", async () => {
