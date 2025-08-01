@@ -13,7 +13,7 @@ async function main() {
   if (args.length === 0) {
     console.error("Usage: bun run index.ts <kustomize-path> [options...]");
     console.error("Options:");
-    console.error("  -b, --branch <branch>    Remote branch to compare against (default: main)");
+    console.error("  -b, --branch <branch>    Remote branch to compare against (default: auto-detect)");
     console.error("  --                       Pass remaining arguments to kustomize");
     console.error("");
     console.error("Examples:");
@@ -25,7 +25,7 @@ async function main() {
   }
   
   const kustomizePath = args[0];
-  let remoteBranch = "main";
+  let remoteBranch: string | null = null;
   let kustomizeOptions: string[] = [];
   
   // Parse arguments
@@ -50,7 +50,6 @@ async function main() {
   }
   
   debug(`Processing path: ${kustomizePath}`);
-  debug(`Remote branch: ${remoteBranch}`);
   if (kustomizeOptions.length > 0) {
     debug(`Kustomize options: ${kustomizeOptions.join(' ')}`);
   }
@@ -64,6 +63,40 @@ async function main() {
     
     debug(`Remote: ${remote}`);
     debug(`Current branch: ${branch}`);
+    
+    // If no remote branch specified, get the default branch
+    if (!remoteBranch) {
+      debug("No remote branch specified, detecting default branch...");
+      try {
+        // Try to get the default branch from remote
+        const defaultBranchResult = await $`git symbolic-ref refs/remotes/origin/HEAD`.text();
+        remoteBranch = defaultBranchResult.trim().replace('refs/remotes/origin/', '');
+        debug(`Detected default branch: ${remoteBranch}`);
+      } catch {
+        // Fallback: try common default branches
+        debug("Could not detect default branch from remote, trying common defaults...");
+        const commonDefaults = ['main', 'master'];
+        for (const defaultBranch of commonDefaults) {
+          try {
+            const checkResult = await $`git ls-remote --heads origin ${defaultBranch}`.text();
+            if (checkResult.trim()) {
+              remoteBranch = defaultBranch;
+              debug(`Found default branch: ${remoteBranch}`);
+              break;
+            }
+          } catch {
+            // Continue to next
+          }
+        }
+        
+        if (!remoteBranch) {
+          console.error("Could not determine default remote branch. Please specify with -b option.");
+          process.exit(1);
+        }
+      }
+    }
+    
+    debug(`Using remote branch: ${remoteBranch}`);
     
     // Build local version
     console.log("Building local version...");
