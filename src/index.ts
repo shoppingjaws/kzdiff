@@ -11,13 +11,19 @@ async function main() {
   const args = process.argv.slice(2);
   
   if (args.length === 0) {
-    console.error("Usage: bun run index.ts <kustomize-path>");
+    console.error("Usage: bun run index.ts <kustomize-path> [kustomize-options...]");
     console.error("Example: bun run index.ts ./examples/overlays/prod");
+    console.error("Example with options: bun run index.ts ./examples/overlays/prod --enable-helm --load-restrictor=LoadRestrictionsNone");
     process.exit(1);
   }
   
   const kustomizePath = args[0];
+  const kustomizeOptions = args.slice(1);
+  
   debug(`Processing path: ${kustomizePath}`);
+  if (kustomizeOptions.length > 0) {
+    debug(`Kustomize options: ${kustomizeOptions.join(' ')}`);
+  }
   
   try {
     // Get current git remote and branch
@@ -31,7 +37,11 @@ async function main() {
     
     // Build local version
     console.log("Building local version...");
-    const localPath = await kustomizeBuildToTmp(kustomizePath, "after.yaml");
+    const localPath = await kustomizeBuildToTmp(
+      kustomizePath, 
+      "after.yaml",
+      kustomizeOptions
+    );
     debug(`Local build saved to: ${localPath}`);
     
     // Build remote version (from main branch)
@@ -39,7 +49,7 @@ async function main() {
     const remotePath = await kustomizeBuildToTmp(
       kustomizePath,
       "before.yaml",
-      undefined,
+      kustomizeOptions,
       { ref: "main", remote }
     );
     debug(`Remote build saved to: ${remotePath}`);
@@ -50,7 +60,6 @@ async function main() {
     
     // Use the diff module to show differences
     await showDiff(remotePath, localPath, { 
-      tool: "git-diff",  // Try git-diff first for better colors
       color: true,
       context: 3
     });

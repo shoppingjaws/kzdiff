@@ -70,7 +70,7 @@ spec:
     console.log = (msg: string) => { output += msg + "\n"; };
     
     try {
-      await showDiff(file1, file2, { tool: "diff", color: false });
+      await showDiff(file1, file2, { color: false });
       expect(output).toContain("-  - port: 80");
       expect(output).toContain("+  - port: 8080");
     } finally {
@@ -78,47 +78,49 @@ spec:
     }
   });
   
-  test("should handle different diff tools", async () => {
-    const content1 = "line1\nline2\nline3";
-    const content2 = "line1\nmodified\nline3";
+  test("should handle context option", async () => {
+    const content1 = "line1\nline2\nline3\nline4\nline5";
+    const content2 = "line1\nline2\nmodified\nline4\nline5";
     
     await writeFile(file1, content1);
     await writeFile(file2, content2);
     
-    // Test with git-diff
+    // Capture console output
     const originalLog = console.log;
     let output = "";
     console.log = (msg: string) => { output += msg + "\n"; };
     
     try {
-      await showDiff(file1, file2, { tool: "git-diff", color: false });
-      expect(output).toContain("line2");
-      expect(output).toContain("modified");
+      await showDiff(file1, file2, { color: false, context: 1 });
+      // Check that output contains the diff
+      expect(output).toContain("-line3");
+      expect(output).toContain("+modified");
     } finally {
       console.log = originalLog;
     }
   });
   
-  test("should fallback gracefully when tools are not available", async () => {
-    await writeFile(file1, "content1");
-    await writeFile(file2, "content2");
+  test("should handle color fallback when --color is not supported", async () => {
+    await writeFile(file1, "line1");
+    await writeFile(file2, "line2");
     
-    // Test with a tool that might not be available
+    // Capture console output and debug output
     const originalLog = console.log;
-    const originalError = console.error;
+    const originalDebug = console.debug;
     let output = "";
-    let errorOutput = "";
+    let debugOutput = "";
     console.log = (msg: string) => { output += msg + "\n"; };
-    console.error = (msg: string) => { errorOutput += msg + "\n"; };
+    console.debug = (msg: string) => { debugOutput += msg + "\n"; };
     
     try {
-      // This should fallback to showing file contents or using basic diff
-      await showDiff(file1, file2, { tool: "delta" });
-      // Should either show diff or fallback content
-      expect(output + errorOutput).toBeTruthy();
+      // This will attempt color, but if it fails it should retry without color
+      await showDiff(file1, file2, { color: true });
+      // Should see diff output (with or without color fallback)
+      expect(output).toContain("-line1");
+      expect(output).toContain("+line2");
     } finally {
       console.log = originalLog;
-      console.error = originalError;
+      console.debug = originalDebug;
     }
   });
 });
