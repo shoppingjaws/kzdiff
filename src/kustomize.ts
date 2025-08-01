@@ -2,6 +2,7 @@ import { $ } from "bun";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { createDebugLogger } from "./debug";
 
 interface BuildOptions {
   ref?: string;
@@ -14,11 +15,12 @@ export async function kustomizeBuildToTmp(
   options?: string[],
   buildOptions?: BuildOptions
 ): Promise<string> {
+  const debug = createDebugLogger('kustomizeBuildToTmp');
   const tempDir = await mkdtemp(join(tmpdir(), "kustomize-build-"));
   const outputPath = join(tempDir, filename);
   
-  console.debug(`[kustomizeBuildToTmp] Created temp dir: ${tempDir}`);
-  console.debug(`[kustomizeBuildToTmp] Output path: ${outputPath}`);
+  debug(`Created temp dir: ${tempDir}`);
+  debug(`Output path: ${outputPath}`);
   
   let targetPath = kustomizePath;
   
@@ -34,26 +36,26 @@ export async function kustomizeBuildToTmp(
         targetPath += `?ref=${buildOptions.ref}`;
       }
       
-      console.debug(`[kustomizeBuildToTmp] Using remote URL: ${targetPath}`);
+      debug(`Using remote URL: ${targetPath}`);
     } else {
-      console.debug(`[kustomizeBuildToTmp] Using local path: ${targetPath}`);
+      debug(`Using local path: ${targetPath}`);
     }
     
     const args = ["kustomize", "build"];
     
     if (options && options.length > 0) {
       args.push(...options);
-      console.debug(`[kustomizeBuildToTmp] Additional options: ${options.join(' ')}`);
+      debug(`Additional options: ${options.join(' ')}`);
     }
     
     args.push(targetPath);
     
-    console.debug(`[kustomizeBuildToTmp] Running command: ${args.join(' ')}`);
+    debug(`Running command: ${args.join(' ')}`);
     
     const result = await $`${args}`.quiet();
     await writeFile(outputPath, result.stdout);
     
-    console.debug(`[kustomizeBuildToTmp] Build successful, wrote ${result.stdout.length} bytes to ${outputPath}`);
+    debug(`Build successful, wrote ${result.stdout.length} bytes to ${outputPath}`);
     
     return outputPath;
   } catch (error) {

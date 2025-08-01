@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "filePatterns": ["*.ts", "*.test.ts"],
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun test"
+          }
+        ]
+      }
+    ]
+  }
+}

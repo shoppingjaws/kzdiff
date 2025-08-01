@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { kustomizeBuildToTmp } from "./kustomize";
 import { $ } from "bun";
 
+// Test comment to trigger hook
 describe("kustomizeBuildToTmp", () => {
   test("should build kustomize and save as before.yaml", async () => {
     const kustomizePath = join(process.cwd(), "examples/overlays/prod");
