@@ -29,7 +29,7 @@ export async function kustomizeBuildToTmp(
     if (buildOptions?.remote) {
       // Format: https://github.com/owner/repo//path/to/dir?ref=branch
       const cleanRemote = buildOptions.remote.replace(/\.git$/, '');
-      const cleanPath = kustomizePath.replace(/^\//, '');
+      const cleanPath = kustomizePath.replace(/^\.?\//, '');
       targetPath = `${cleanRemote}//${cleanPath}`;
       
       if (buildOptions.ref) {
@@ -58,8 +58,11 @@ export async function kustomizeBuildToTmp(
     debug(`Build successful, wrote ${result.stdout.length} bytes to ${outputPath}`);
     
     return outputPath;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[kustomizeBuildToTmp] Error: ${error}`);
+    if (error.stderr) {
+      console.error(`[kustomizeBuildToTmp] stderr: ${error.stderr}`);
+    }
     throw new Error(`Failed to run kustomize build: ${error}`);
   }
 }

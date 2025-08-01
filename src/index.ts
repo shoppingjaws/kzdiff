@@ -13,29 +13,33 @@ async function main() {
   if (args.length === 0) {
     console.error("Usage: bun run index.ts <kustomize-path> [options...]");
     console.error("Options:");
-    console.error("  -b, --branch <branch>    Remote branch to compare against (default: auto-detect)");
+    console.error("  -b, --branch <ref>       Remote branch or commit to compare against");
+    console.error("  -r, --ref <ref>          Same as -b/--branch (default: auto-detect)");
     console.error("  --                       Pass remaining arguments to kustomize");
     console.error("");
     console.error("Examples:");
     console.error("  bun run index.ts ./examples/overlays/prod");
     console.error("  bun run index.ts ./examples/overlays/prod -b develop");
+    console.error("  bun run index.ts ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13");
     console.error("  bun run index.ts ./examples/overlays/prod -- --enable-helm");
     console.error("  bun run index.ts ./examples/overlays/prod -b staging -- --enable-helm");
+    console.error("");
+    console.error("Note: When using commit hashes, use the full 40-character SHA");
     process.exit(1);
   }
   
   const kustomizePath = args[0];
-  let remoteBranch: string | null = null;
+  let remoteRef: string | null = null;
   let kustomizeOptions: string[] = [];
   
   // Parse arguments
   for (let i = 1; i < args.length; i++) {
-    if (args[i] === "-b" || args[i] === "--branch") {
+    if (args[i] === "-b" || args[i] === "--branch" || args[i] === "-r" || args[i] === "--ref") {
       if (i + 1 < args.length) {
-        remoteBranch = args[i + 1];
+        remoteRef = args[i + 1];
         i++; // Skip next argument
       } else {
-        console.error("Error: -b/--branch requires a branch name");
+        console.error(`Error: ${args[i]} requires a branch name or commit hash`);
         process.exit(1);
       }
     } else if (args[i] === "--") {
@@ -64,14 +68,14 @@ async function main() {
     debug(`Remote: ${remote}`);
     debug(`Current branch: ${branch}`);
     
-    // If no remote branch specified, get the default branch
-    if (!remoteBranch) {
-      debug("No remote branch specified, detecting default branch...");
+    // If no remote ref specified, get the default branch
+    if (!remoteRef) {
+      debug("No remote ref specified, detecting default branch...");
       try {
         // Try to get the default branch from remote
         const defaultBranchResult = await $`git symbolic-ref refs/remotes/origin/HEAD`.text();
-        remoteBranch = defaultBranchResult.trim().replace('refs/remotes/origin/', '');
-        debug(`Detected default branch: ${remoteBranch}`);
+        remoteRef = defaultBranchResult.trim().replace('refs/remotes/origin/', '');
+        debug(`Detected default branch: ${remoteRef}`);
       } catch {
         // Fallback: try common default branches
         debug("Could not detect default branch from remote, trying common defaults...");
@@ -80,8 +84,8 @@ async function main() {
           try {
             const checkResult = await $`git ls-remote --heads origin ${defaultBranch}`.text();
             if (checkResult.trim()) {
-              remoteBranch = defaultBranch;
-              debug(`Found default branch: ${remoteBranch}`);
+              remoteRef = defaultBranch;
+              debug(`Found default branch: ${remoteRef}`);
               break;
             }
           } catch {
@@ -89,14 +93,14 @@ async function main() {
           }
         }
         
-        if (!remoteBranch) {
-          console.error("Could not determine default remote branch. Please specify with -b option.");
+        if (!remoteRef) {
+          console.error("Could not determine default remote branch. Please specify with -b or -r option.");
           process.exit(1);
         }
       }
     }
     
-    debug(`Using remote branch: ${remoteBranch}`);
+    debug(`Using remote ref: ${remoteRef}`);
     
     // Build local version
     console.log("Building local version...");
@@ -107,18 +111,18 @@ async function main() {
     );
     debug(`Local build saved to: ${localPath}`);
     
-    // Build remote version (from specified branch)
-    console.log(`Building remote version (${remoteBranch} branch)...`);
+    // Build remote version (from specified ref)
+    console.log(`Building remote version (${remoteRef})...`);
     const remotePath = await kustomizeBuildToTmp(
       kustomizePath,
       "before.yaml",
       kustomizeOptions,
-      { ref: remoteBranch, remote }
+      { ref: remoteRef, remote }
     );
     debug(`Remote build saved to: ${remotePath}`);
     
     // Show diff
-    console.log(`\nShowing diff between ${remoteBranch} branch and local changes:`);
+    console.log(`\nShowing diff between ${remoteRef} and local changes:`);
     console.log("=" .repeat(80));
     
     // Use the diff module to show differences
