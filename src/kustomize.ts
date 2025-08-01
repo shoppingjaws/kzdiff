@@ -17,6 +17,9 @@ export async function kustomizeBuildToTmp(
   const tempDir = await mkdtemp(join(tmpdir(), "kustomize-build-"));
   const outputPath = join(tempDir, filename);
   
+  console.debug(`[kustomizeBuildToTmp] Created temp dir: ${tempDir}`);
+  console.debug(`[kustomizeBuildToTmp] Output path: ${outputPath}`);
+  
   let targetPath = kustomizePath;
   
   try {
@@ -30,20 +33,31 @@ export async function kustomizeBuildToTmp(
       if (buildOptions.ref) {
         targetPath += `?ref=${buildOptions.ref}`;
       }
+      
+      console.debug(`[kustomizeBuildToTmp] Using remote URL: ${targetPath}`);
+    } else {
+      console.debug(`[kustomizeBuildToTmp] Using local path: ${targetPath}`);
     }
     
     const args = ["kustomize", "build"];
     
     if (options && options.length > 0) {
       args.push(...options);
+      console.debug(`[kustomizeBuildToTmp] Additional options: ${options.join(' ')}`);
     }
     
     args.push(targetPath);
     
+    console.debug(`[kustomizeBuildToTmp] Running command: ${args.join(' ')}`);
+    
     const result = await $`${args}`.quiet();
     await writeFile(outputPath, result.stdout);
+    
+    console.debug(`[kustomizeBuildToTmp] Build successful, wrote ${result.stdout.length} bytes to ${outputPath}`);
+    
     return outputPath;
   } catch (error) {
+    console.error(`[kustomizeBuildToTmp] Error: ${error}`);
     throw new Error(`Failed to run kustomize build: ${error}`);
   }
 }

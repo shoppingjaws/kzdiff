@@ -85,4 +85,22 @@ describe("kustomizeBuildToTmp", () => {
     // Check if filename is correct
     expect(outputPath).toMatch(/after\.yaml$/);
   });
+
+  test("should execute kustomize build command successfully (exit code 0)", async () => {
+    const kustomizePath = join(process.cwd(), "examples/overlays/prod");
+    
+    // This should not throw an error if exit code is 0
+    await expect(kustomizeBuildToTmp(kustomizePath, "before.yaml")).resolves.toBeTruthy();
+    
+    // Also test with options
+    await expect(
+      kustomizeBuildToTmp(kustomizePath, "after.yaml", ["--enable-helm"])
+    ).resolves.toBeTruthy();
+    
+    // Test direct shell command execution
+    const result = await $`kustomize build ${kustomizePath}`.nothrow();
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBeTruthy();
+    // Note: stderr may contain deprecation warnings, which is OK
+  });
 });
