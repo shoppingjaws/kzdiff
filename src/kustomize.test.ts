@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { kustomizeBuildToTmp } from "./kustomize";
+import { $ } from "bun";
 
 describe("kustomizeBuildToTmp", () => {
   test("should build kustomize and save as before.yaml", async () => {
@@ -58,5 +59,30 @@ describe("kustomizeBuildToTmp", () => {
     expect(async () => {
       await kustomizeBuildToTmp(invalidPath, "before.yaml");
     }).toThrow("Failed to run kustomize build:");
+  });
+
+  test("should build from remote branch using Kustomize native support", async () => {
+    // Get the current remote URL
+    const remoteUrl = await $`git config --get remote.origin.url`.text();
+    const remote = remoteUrl.trim();
+    
+    const outputPath = await kustomizeBuildToTmp(
+      "examples/overlays/prod",
+      "after.yaml",
+      undefined,
+      { ref: "main", remote }
+    );
+    
+    // Check if file exists
+    const stats = await stat(outputPath);
+    expect(stats.isFile()).toBe(true);
+    
+    // Check if file has content
+    const content = await readFile(outputPath, "utf-8");
+    expect(content.length).toBeGreaterThan(0);
+    expect(content).toContain("apiVersion:");
+    
+    // Check if filename is correct
+    expect(outputPath).toMatch(/after\.yaml$/);
   });
 });
