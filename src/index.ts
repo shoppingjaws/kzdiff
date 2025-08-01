@@ -11,18 +11,19 @@ async function main() {
   const args = process.argv.slice(2);
   
   if (args.length === 0) {
-    console.error("Usage: bun run index.ts <kustomize-path> [options...]");
+    const progName = process.argv[1]?.endsWith("kzdiff") ? "kzdiff" : "bun run index.ts";
+    console.error(`Usage: ${progName} <kustomize-path> [options...]`);
     console.error("Options:");
     console.error("  -b, --branch <ref>       Remote branch or commit to compare against");
     console.error("  -r, --ref <ref>          Same as -b/--branch (default: auto-detect)");
     console.error("  --                       Pass remaining arguments to kustomize");
     console.error("");
     console.error("Examples:");
-    console.error("  bun run index.ts ./examples/overlays/prod");
-    console.error("  bun run index.ts ./examples/overlays/prod -b develop");
-    console.error("  bun run index.ts ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13");
-    console.error("  bun run index.ts ./examples/overlays/prod -- --enable-helm");
-    console.error("  bun run index.ts ./examples/overlays/prod -b staging -- --enable-helm");
+    console.error(`  ${progName} ./examples/overlays/prod`);
+    console.error(`  ${progName} ./examples/overlays/prod -b develop`);
+    console.error(`  ${progName} ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13`);
+    console.error(`  ${progName} ./examples/overlays/prod -- --enable-helm`);
+    console.error(`  ${progName} ./examples/overlays/prod -b staging -- --enable-helm`);
     console.error("");
     console.error("Note: When using commit hashes, use the full 40-character SHA");
     process.exit(1);

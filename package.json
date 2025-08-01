@@ -6,7 +6,8 @@
   "scripts": {
     "test": "bun test",
     "test:cli": "bun test cli.test.ts",
-    "test:unit": "bun test --ignore cli.test.ts"
+    "test:unit": "bun test --ignore cli.test.ts",
+    "build": "bun build ./src/index.ts --compile --outfile kzdiff"
   },
   "devDependencies": {
     "@types/bun": "latest"
