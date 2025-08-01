@@ -5,6 +5,7 @@ resources:
   - deployment.yaml
   - service.yaml
 
-commonLabels:
-  app: example-app
-  environment: base
+labels:
+  - pairs:
+      app: example-app
+      environment: base
