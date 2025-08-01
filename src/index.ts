@@ -13,21 +13,24 @@ async function main() {
   // Show help function
   const showHelp = (exitCode: number = 0) => {
     const progName = process.argv[1]?.endsWith("kzdiff") ? "kzdiff" : "bun run index.ts";
-    console.log(`Usage: ${progName} <kustomize-path> [options...]`);
-    console.log("Options:");
-    console.log("  -b, --branch <ref>       Remote branch or commit to compare against");
-    console.log("  -r, --ref <ref>          Same as -b/--branch (default: auto-detect)");
-    console.log("  -h, --help               Show this help message");
-    console.log("  --                       Pass remaining arguments to kustomize");
-    console.log("");
-    console.log("Examples:");
-    console.log(`  ${progName} ./examples/overlays/prod`);
-    console.log(`  ${progName} ./examples/overlays/prod -b develop`);
-    console.log(`  ${progName} ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13`);
-    console.log(`  ${progName} ./examples/overlays/prod -- --enable-helm`);
-    console.log(`  ${progName} ./examples/overlays/prod -b staging -- --enable-helm`);
-    console.log("");
-    console.log("Note: When using commit hashes, use the full 40-character SHA");
+    const helpText = `Usage: ${progName} <kustomize-path> [options...]
+
+Options:
+  -b, --branch <ref>       Remote branch or commit to compare against
+  -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
+  -h, --help               Show this help message
+  --                       Pass remaining arguments to kustomize
+
+Examples:
+  ${progName} ./examples/overlays/prod
+  ${progName} ./examples/overlays/prod -b develop
+  ${progName} ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
+  ${progName} ./examples/overlays/prod -- --enable-helm
+  ${progName} ./examples/overlays/prod -b staging -- --enable-helm
+
+Note: When using commit hashes, use the full 40-character SHA`;
+    
+    console.log(helpText);
     process.exit(exitCode);
   };
   
