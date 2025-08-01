@@ -1,5 +1,0 @@
-{
-  "hooks": {
-    "post-tool-use": ".claude/hooks/post-edit.sh"
-  }
-}
