@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun";
+import { parseArgs } from "util";
 import { kustomizeBuildToTmp } from "./kustomize";
 import { createDebugLogger } from "./debug";
 import { showDiff } from "./diff";
@@ -34,46 +35,96 @@ Note: When using commit hashes, use the full 40-character SHA`;
 		process.exit(exitCode);
 	};
 
-	// Check for help flag
-	if (args.includes("-h") || args.includes("--help")) {
-		showHelp(0);
-	}
-
+	// Check for no arguments
 	if (args.length === 0) {
 		showHelp(1);
 	}
 
-	const kustomizePath = args[0];
-	let remoteRef: string | null = null;
+	// Handle -- separator first
 	let kustomizeOptions: string[] = [];
+	const dashDashIndex = args.indexOf("--");
+	let argsToProcess = args;
 
-	// Parse arguments
-	for (let i = 1; i < args.length; i++) {
-		if (
-			args[i] === "-b" ||
-			args[i] === "--branch" ||
-			args[i] === "-r" ||
-			args[i] === "--ref"
-		) {
-			if (i + 1 < args.length) {
-				remoteRef = args[i + 1];
-				i++; // Skip next argument
+	if (dashDashIndex !== -1) {
+		// Everything after -- goes to kustomize
+		kustomizeOptions = args.slice(dashDashIndex + 1);
+		argsToProcess = args.slice(0, dashDashIndex);
+	}
+
+	// Parse arguments using node:util parseArgs
+	let values: any;
+	let positionals: string[];
+
+	try {
+		const parsed = parseArgs({
+			args: argsToProcess,
+			options: {
+				branch: {
+					type: "string",
+					short: "b",
+				},
+				ref: {
+					type: "string",
+					short: "r",
+				},
+				help: {
+					type: "boolean",
+					short: "h",
+				},
+			},
+			allowPositionals: true,
+			strict: true,
+			tokens: false,
+		});
+		values = parsed.values;
+		positionals = parsed.positionals;
+	} catch (error: any) {
+		if (error.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
+			// Extract just the unknown option part from the error message
+			const match = error.message.match(/Unknown option '([^']+)'/);
+			if (match) {
+				console.error(`Error: Unknown option: ${match[1]}`);
 			} else {
-				console.error(
-					`Error: ${args[i]} requires a branch name or commit hash`,
-				);
-				process.exit(1);
+				console.error(`Error: ${error.message}`);
 			}
-		} else if (args[i] === "--") {
-			// Everything after -- goes to kustomize
-			kustomizeOptions = args.slice(i + 1);
-			break;
-		} else {
-			console.error(`Error: Unknown option: ${args[i]}`);
 			console.error("Use -- to pass options to kustomize");
 			process.exit(1);
+		} else if (error.code === "ERR_PARSE_ARGS_INVALID_OPTION_VALUE") {
+			// Handle missing option values
+			const match = error.message.match(/Option '([^']+)'/);
+			if (match) {
+				const optionName = match[1].split(",")[0].trim();
+				console.error(
+					`Error: ${optionName} requires a branch name or commit hash`,
+				);
+			} else {
+				console.error(`Error: ${error.message}`);
+			}
+			process.exit(1);
 		}
+		throw error;
 	}
+
+	// Check for help flag
+	if (values.help) {
+		showHelp(0);
+	}
+
+	// Get kustomize path from positionals
+	if (positionals.length === 0) {
+		console.error("Error: No kustomize path provided");
+		showHelp(1);
+	} else if (positionals.length > 1) {
+		console.error(
+			`Error: Multiple paths provided: ${positionals.join(" and ")}`,
+		);
+		process.exit(1);
+	}
+
+	const kustomizePath = positionals[0];
+
+	// Get remote ref from options (prefer ref over branch if both provided)
+	let remoteRef = values.ref || values.branch || null;
 
 	debug(`Processing path: ${kustomizePath}`);
 	if (kustomizeOptions.length > 0) {

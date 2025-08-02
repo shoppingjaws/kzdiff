@@ -117,6 +117,59 @@ describe("kzdiff CLI", () => {
 			expect(exitCode).toBe(0);
 			expect(stdout).toContain("Building remote version (main)...");
 		});
+
+		test("should accept options before path", async () => {
+			const { stdout, exitCode } = await runCLI(["-b", "main", EXAMPLE_PATH]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain("Building remote version (main)...");
+		});
+
+		test("should accept --branch before path", async () => {
+			const { stdout, exitCode } = await runCLI([
+				"--branch",
+				"main",
+				EXAMPLE_PATH,
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain("Building remote version (main)...");
+		});
+
+		test("should accept -r before path", async () => {
+			const { stdout, exitCode } = await runCLI([
+				"-r",
+				TEST_COMMIT,
+				EXAMPLE_PATH,
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain(`Building remote version (${TEST_COMMIT})...`);
+		});
+
+		test("should accept --ref before path", async () => {
+			const { stdout, exitCode } = await runCLI([
+				"--ref",
+				TEST_COMMIT,
+				EXAMPLE_PATH,
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain(`Building remote version (${TEST_COMMIT})...`);
+		});
+
+		test("should accept options before path with kustomize options", async () => {
+			const { stdout, exitCode } = await runCLI([
+				"-b",
+				"main",
+				EXAMPLE_PATH,
+				"--",
+				"--enable-helm",
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain("Building remote version (main)...");
+		});
 	});
 
 	describe("Error handling", () => {
@@ -158,6 +211,24 @@ describe("kzdiff CLI", () => {
 			expect(exitCode).toBe(1);
 			expect(stderr).toContain("Error: Unknown option: --unknown-option");
 			expect(stderr).toContain("Use -- to pass options to kustomize");
+		});
+
+		test("should fail when only options provided without path", async () => {
+			const { stderr, stdout, exitCode } = await runCLI(["-b", "main"]);
+
+			expect(exitCode).toBe(1);
+			expect(stderr).toContain("Error: No kustomize path provided");
+			expect(stdout).toContain("Usage:");
+		});
+
+		test("should fail when multiple paths provided", async () => {
+			const { stderr, exitCode } = await runCLI([
+				EXAMPLE_PATH,
+				"./another/path",
+			]);
+
+			expect(exitCode).toBe(1);
+			expect(stderr).toContain("Error: Multiple paths provided");
 		});
 	});
 
