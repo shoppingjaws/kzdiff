@@ -253,13 +253,12 @@ describe("kzdiff CLI", () => {
 	});
 
 	describe("Debug output", () => {
-		test("should show debug output when DEBUG env is set", async () => {
-			process.env.DEBUG = "1";
-
+		test("should show debug output when --verbose flag is set", async () => {
 			const { stdout, stderr } = await runCLI([
 				EXAMPLE_PATH,
 				"-r",
 				TEST_COMMIT,
+				"--verbose",
 			]);
 
 			// Debug output might be in stdout or stderr depending on the implementation
@@ -268,8 +267,21 @@ describe("kzdiff CLI", () => {
 			expect(combinedOutput).toContain("[kzdiff-cli]");
 			expect(combinedOutput).toContain("Processing path:");
 			expect(combinedOutput).toContain("Using remote ref:");
+		});
 
-			delete process.env.DEBUG;
+		test("should not show debug output without --verbose flag", async () => {
+			const { stdout, stderr } = await runCLI([
+				EXAMPLE_PATH,
+				"-r",
+				TEST_COMMIT,
+			]);
+
+			// Debug output should not be present
+			const combinedOutput = stdout + stderr;
+
+			expect(combinedOutput).not.toContain("[kzdiff-cli]");
+			expect(combinedOutput).not.toContain("Processing path:");
+			expect(combinedOutput).not.toContain("Using remote ref:");
 		});
 	});
 

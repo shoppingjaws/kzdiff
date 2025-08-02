@@ -3,7 +3,7 @@
 import { $ } from "bun";
 import { parseArgs } from "util";
 import { kustomizeBuildToTmp } from "./kustomize";
-import { createDebugLogger } from "./debug";
+import { createDebugLogger, setVerbose } from "./debug";
 import { showDiff } from "./diff";
 
 const debug = createDebugLogger("kzdiff-cli");
@@ -20,6 +20,7 @@ Options:
   -b, --branch <ref>       Remote branch or commit to compare against
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
   -h, --help               Show this help message
+  -v, --verbose            Enable debug logging
   --                       Pass remaining arguments to kustomize
 
 Examples:
@@ -71,6 +72,10 @@ Note: When using commit hashes, use the full 40-character SHA`;
 					type: "boolean",
 					short: "h",
 				},
+				verbose: {
+					type: "boolean",
+					short: "v",
+				},
 			},
 			allowPositionals: true,
 			strict: true,
@@ -108,6 +113,11 @@ Note: When using commit hashes, use the full 40-character SHA`;
 	// Check for help flag
 	if (values.help) {
 		showHelp(0);
+	}
+
+	// Set verbose logging if requested
+	if (values.verbose) {
+		setVerbose(true);
 	}
 
 	// Get kustomize path from positionals
