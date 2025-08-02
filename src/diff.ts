@@ -13,10 +13,12 @@ export async function showDiff(
 	file1: string,
 	file2: string,
 	options: DiffOptions = {},
-): Promise<void> {
+): Promise<boolean> {
 	const { color = true, context = 3 } = options;
 
 	debug(`Comparing ${file1} vs ${file2} using diff`);
+
+	let hasDifferences = false;
 
 	try {
 		const args = ["diff", `-u${context}`];
@@ -29,9 +31,11 @@ export async function showDiff(
 
 		if (result.exitCode === 0) {
 			console.log("No differences found.");
+			hasDifferences = false;
 		} else if (result.exitCode === 1) {
 			// diff returns 1 when files differ, which is expected
 			console.log(result.stdout.toString());
+			hasDifferences = true;
 		} else {
 			// Try without color if --color is not supported
 			if (color) {
@@ -40,6 +44,7 @@ export async function showDiff(
 					await $`diff -u${context} ${file1} ${file2}`.nothrow();
 				if (fallbackResult.exitCode === 1) {
 					console.log(fallbackResult.stdout.toString());
+					hasDifferences = true;
 				} else {
 					throw new Error(`diff failed: ${result.stderr.toString()}`);
 				}
@@ -54,5 +59,12 @@ export async function showDiff(
 		console.log(await readFile(file1, "utf-8"));
 		console.log("\n--- File 2 ---");
 		console.log(await readFile(file2, "utf-8"));
+		
+		// When fallback happens, compare file contents to determine if they differ
+		const content1 = await readFile(file1, "utf-8");
+		const content2 = await readFile(file2, "utf-8");
+		hasDifferences = content1 !== content2;
 	}
+
+	return hasDifferences;
 }

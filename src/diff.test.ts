@@ -39,8 +39,9 @@ spec:
 		};
 
 		try {
-			await showDiff(file1, file2);
+			const hasDifferences = await showDiff(file1, file2);
 			expect(output).toContain("No differences found");
+			expect(hasDifferences).toBe(false);
 		} finally {
 			console.log = originalLog;
 		}
@@ -74,9 +75,10 @@ spec:
 		};
 
 		try {
-			await showDiff(file1, file2, { color: false });
+			const hasDifferences = await showDiff(file1, file2, { color: false });
 			expect(output).toContain("-  - port: 80");
 			expect(output).toContain("+  - port: 8080");
+			expect(hasDifferences).toBe(true);
 		} finally {
 			console.log = originalLog;
 		}

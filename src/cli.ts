@@ -21,6 +21,7 @@ Options:
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
   -h, --help               Show this help message
   -v, --verbose            Enable debug logging
+  --exit-code              Exit with code 1 if differences are found
   --                       Pass remaining arguments to kustomize
 
 Examples:
@@ -29,6 +30,7 @@ Examples:
   ${progName} ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
   ${progName} ./examples/overlays/prod -- --enable-helm
   ${progName} ./examples/overlays/prod -b staging -- --enable-helm
+  ${progName} ./examples/overlays/prod --exit-code
 
 Note: When using commit hashes, use the full 40-character SHA`;
 
@@ -75,6 +77,9 @@ Note: When using commit hashes, use the full 40-character SHA`;
 				verbose: {
 					type: "boolean",
 					short: "v",
+				},
+				"exit-code": {
+					type: "boolean",
 				},
 			},
 			allowPositionals: true,
@@ -217,10 +222,15 @@ Note: When using commit hashes, use the full 40-character SHA`;
 		console.log("=".repeat(80));
 
 		// Use the diff module to show differences
-		await showDiff(remotePath, localPath, {
+		const hasDifferences = await showDiff(remotePath, localPath, {
 			color: true,
 			context: 3,
 		});
+
+		// Exit with code 1 if differences are found and --exit-code is set
+		if (hasDifferences && values["exit-code"]) {
+			process.exit(1);
+		}
 	} catch (error) {
 		console.error("Error:", error);
 		process.exit(1);
