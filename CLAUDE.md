@@ -51,7 +51,7 @@ The codebase follows a modular architecture:
 - **kzdiff.ts**: Core logic for Git operations and Kustomize builds
 - **utils.ts**: Utility functions for Git, Kustomize, and file operations
 - **diff.ts**: YAML diffing and formatting with colored output
-- **index.ts**: Public API exports
+- **cli.ts**: Public API exports
 
 Key patterns:
 - Async/await throughout
