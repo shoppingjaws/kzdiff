@@ -1,3 +1,3 @@
 export function createDebugLogger(functionName: string) {
-  return (message: string) => console.debug(`[${functionName}] ${message}`);
+	return (message: string) => console.debug(`[${functionName}] ${message}`);
 }
