@@ -1,3 +1,4 @@
 [tools]
+bun = "1.2.19"
 kustomize = "5.7.1"
 "npm:@biomejs/biome" = "2.1.3"
