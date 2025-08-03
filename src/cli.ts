@@ -14,7 +14,7 @@ async function main() {
 	const showHelp = (exitCode: number = 0) => {
 		const progName = process.argv[1]?.endsWith("kzdiff")
 			? "kzdiff"
-			: "bun run index.ts";
+			: "bun run src/cli.ts";
 		const helpText = `Usage: ${progName} <kustomize-path> [options...]
 
 Options:

@@ -1,13 +1,13 @@
 {
 	"name": "kzdiff",
-	"module": "index.ts",
+	"module": "cli.ts",
 	"type": "module",
 	"private": true,
 	"scripts": {
 		"test": "bun test",
 		"test:cli": "bun test cli.test.ts",
 		"test:unit": "bun test --ignore cli.test.ts",
-		"build": "bun build ./src/index.ts --compile --outfile kzdiff",
+		"build": "bun build ./src/cli.ts --compile --outfile kzdiff",
 		"format": "biome format --write",
 		"lint": "biome lint --fix"
 	},

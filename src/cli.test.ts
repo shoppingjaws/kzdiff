@@ -3,7 +3,7 @@ import { $ } from "bun";
 import { join } from "path";
 
 describe("kzdiff CLI", () => {
-	const CLI_PATH = join(process.cwd(), "src/index.ts");
+	const CLI_PATH = join(process.cwd(), "src/cli.ts");
 	const TEST_COMMIT = "3b4d8b0121ac84d7678591d8139b6eb5f88061d6";
 	const EXAMPLE_PATH = "./examples/overlays/prod";
 
