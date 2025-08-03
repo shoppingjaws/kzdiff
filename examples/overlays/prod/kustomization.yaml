@@ -12,7 +12,7 @@ commonLabels:
 
 replicas:
   - name: example-app
-    count: 5
+    count: 3
 
 patches:
   - target:
