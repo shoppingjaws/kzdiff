@@ -64,11 +64,7 @@ export async function kustomizeBuildToTmp(
       const errorMessage = error.stderr.toString().toLowerCase();
       const notFoundPatterns = [
         'does not exist',
-        'no such file or directory',
-        'unable to find',
-        '404',
-        'not found',
-        'cannot find'
+        'no such file or directory'
       ];
       
       const isNotFound = notFoundPatterns.some(pattern => errorMessage.includes(pattern));
