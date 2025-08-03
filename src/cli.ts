@@ -2,7 +2,7 @@
 
 import { $ } from "bun";
 import { kustomizeBuildToTmp } from "./kustomize";
-import { createDebugLogger } from "./debug";
+import { createDebugLogger, setVerbose } from "./debug";
 import { showDiff } from "./diff";
 
 const debug = createDebugLogger("kzdiff-cli");
@@ -19,6 +19,7 @@ Options:
   -b, --branch <ref>       Remote branch or commit to compare against
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
   -h, --help               Show this help message
+  -v, --verbose            Enable verbose debug logging
   --                       Pass remaining arguments to kustomize
 
 Examples:
@@ -46,6 +47,7 @@ Note: When using commit hashes, use the full 40-character SHA`;
 	const kustomizePath = args[0];
 	let remoteRef: string | null = null;
 	let kustomizeOptions: string[] = [];
+	let verbose = false;
 
 	// Parse arguments
 	for (let i = 1; i < args.length; i++) {
@@ -64,6 +66,8 @@ Note: When using commit hashes, use the full 40-character SHA`;
 				);
 				process.exit(1);
 			}
+		} else if (args[i] === "-v" || args[i] === "--verbose") {
+			verbose = true;
 		} else if (args[i] === "--") {
 			// Everything after -- goes to kustomize
 			kustomizeOptions = args.slice(i + 1);
@@ -73,6 +77,11 @@ Note: When using commit hashes, use the full 40-character SHA`;
 			console.error("Use -- to pass options to kustomize");
 			process.exit(1);
 		}
+	}
+
+	// Enable verbose mode if requested
+	if (verbose) {
+		setVerbose(true);
 	}
 
 	debug(`Processing path: ${kustomizePath}`);
@@ -133,7 +142,7 @@ Note: When using commit hashes, use the full 40-character SHA`;
 		debug(`Using remote ref: ${remoteRef}`);
 
 		// Build local version
-		console.log("Building local version...");
+		debug("Building local version...");
 		const localPath = await kustomizeBuildToTmp(
 			kustomizePath,
 			"after.yaml",
@@ -142,7 +151,7 @@ Note: When using commit hashes, use the full 40-character SHA`;
 		debug(`Local build saved to: ${localPath}`);
 
 		// Build remote version (from specified ref)
-		console.log(`Building remote version (${remoteRef})...`);
+		debug(`Building remote version (${remoteRef})...`);
 		const remotePath = await kustomizeBuildToTmp(
 			kustomizePath,
 			"before.yaml",
@@ -152,8 +161,8 @@ Note: When using commit hashes, use the full 40-character SHA`;
 		debug(`Remote build saved to: ${remotePath}`);
 
 		// Show diff
-		console.log(`\nShowing diff between ${remoteRef} and local changes:`);
-		console.log("=".repeat(80));
+		debug(`\nShowing diff between ${remoteRef} and local changes:`);
+		debug("=".repeat(80));
 
 		// Use the diff module to show differences
 		await showDiff(remotePath, localPath, {
