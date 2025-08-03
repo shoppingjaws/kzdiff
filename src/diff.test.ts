@@ -1,7 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { writeFile, rm, mkdtemp } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { join } from "path";
+import { tmpdir } from "os";
+import { rm, mkdtemp } from "fs/promises";
 import { showDiff } from "./diff";
 
 describe("showDiff", () => {
@@ -28,8 +28,8 @@ spec:
   ports:
   - port: 80`;
     
-    await writeFile(file1, content);
-    await writeFile(file2, content);
+    await Bun.write(file1, content);
+    await Bun.write(file2, content);
     
     // Capture console output
     const originalLog = console.log;
@@ -61,8 +61,8 @@ spec:
   ports:
   - port: 8080`;
     
-    await writeFile(file1, content1);
-    await writeFile(file2, content2);
+    await Bun.write(file1, content1);
+    await Bun.write(file2, content2);
     
     // Capture console output
     const originalLog = console.log;
@@ -82,8 +82,8 @@ spec:
     const content1 = "line1\nline2\nline3\nline4\nline5";
     const content2 = "line1\nline2\nmodified\nline4\nline5";
     
-    await writeFile(file1, content1);
-    await writeFile(file2, content2);
+    await Bun.write(file1, content1);
+    await Bun.write(file2, content2);
     
     // Capture console output
     const originalLog = console.log;
@@ -101,8 +101,8 @@ spec:
   });
   
   test("should handle color fallback when --color is not supported", async () => {
-    await writeFile(file1, "line1");
-    await writeFile(file2, "line2");
+    await Bun.write(file1, "line1");
+    await Bun.write(file2, "line2");
     
     // Capture console output and debug output
     const originalLog = console.log;

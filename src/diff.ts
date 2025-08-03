@@ -1,5 +1,4 @@
 import { $ } from "bun";
-import { readFile } from "node:fs/promises";
 import { createDebugLogger } from "./debug";
 
 const debug = createDebugLogger("diff");
@@ -50,8 +49,8 @@ export async function showDiff(
     console.error("Failed to run diff:", error);
     // Fallback: show file contents
     console.log("\n--- File 1 ---");
-    console.log(await readFile(file1, "utf-8"));
+    console.log(await Bun.file(file1).text());
     console.log("\n--- File 2 ---");
-    console.log(await readFile(file2, "utf-8"));
+    console.log(await Bun.file(file2).text());
   }
 }

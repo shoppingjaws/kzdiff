@@ -1,7 +1,7 @@
 import { $ } from "bun";
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { mkdtemp } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
 import { createDebugLogger } from "./debug";
 
 interface BuildOptions {
@@ -53,7 +53,7 @@ export async function kustomizeBuildToTmp(
     debug(`Running command: ${args.join(' ')}`);
     
     const result = await $`${args}`.quiet();
-    await writeFile(outputPath, result.stdout);
+    await Bun.write(outputPath, result.stdout);
     
     debug(`Build successful, wrote ${result.stdout.length} bytes to ${outputPath}`);
     
@@ -71,7 +71,7 @@ export async function kustomizeBuildToTmp(
       
       if (isNotFound) {
         debug(`Remote directory not found, creating empty file at ${outputPath}`);
-        await writeFile(outputPath, '');
+        await Bun.write(outputPath, '');
         return outputPath;
       }
     }

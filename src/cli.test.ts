@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { $ } from "bun";
-import { join } from "node:path";
+import { join } from "path";
 
 describe("kzdiff CLI", () => {
   const CLI_PATH = join(process.cwd(), "src/index.ts");

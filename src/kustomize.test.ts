@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { stat } from "fs/promises";
+import { join } from "path";
 import { kustomizeBuildToTmp } from "./kustomize";
 import { $ } from "bun";
 
@@ -15,7 +15,7 @@ describe("kustomizeBuildToTmp", () => {
     expect(stats.isFile()).toBe(true);
     
     // Check if file has content
-    const content = await readFile(outputPath, "utf-8");
+    const content = await Bun.file(outputPath).text();
     expect(content.length).toBeGreaterThan(0);
     expect(content).toContain("apiVersion:");
     
@@ -32,7 +32,7 @@ describe("kustomizeBuildToTmp", () => {
     expect(stats.isFile()).toBe(true);
     
     // Check if file has content
-    const content = await readFile(outputPath, "utf-8");
+    const content = await Bun.file(outputPath).text();
     expect(content.length).toBeGreaterThan(0);
     expect(content).toContain("apiVersion:");
     
@@ -50,7 +50,7 @@ describe("kustomizeBuildToTmp", () => {
     expect(stats.isFile()).toBe(true);
     
     // Check if file has content
-    const content = await readFile(outputPath, "utf-8");
+    const content = await Bun.file(outputPath).text();
     expect(content.length).toBeGreaterThan(0);
   });
 
@@ -79,7 +79,7 @@ describe("kustomizeBuildToTmp", () => {
     expect(stats.isFile()).toBe(true);
     
     // Check if file has content
-    const content = await readFile(outputPath, "utf-8");
+    const content = await Bun.file(outputPath).text();
     expect(content.length).toBeGreaterThan(0);
     expect(content).toContain("apiVersion:");
     
@@ -125,7 +125,7 @@ describe("kustomizeBuildToTmp", () => {
     expect(stats.isFile()).toBe(true);
     
     // Check if file is empty
-    const content = await readFile(outputPath, "utf-8");
+    const content = await Bun.file(outputPath).text();
     expect(content).toBe("");
     
     // Check if filename is correct
