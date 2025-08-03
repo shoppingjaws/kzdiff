@@ -1,18 +1,20 @@
 {
-  "name": "kzdiff",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "test": "bun test",
-    "test:cli": "bun test cli.test.ts",
-    "test:unit": "bun test --ignore cli.test.ts",
-    "build": "bun build ./src/index.ts --compile --outfile kzdiff"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  }
+	"name": "kzdiff",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"test": "bun test",
+		"test:cli": "bun test cli.test.ts",
+		"test:unit": "bun test --ignore cli.test.ts",
+		"build": "bun build ./src/index.ts --compile --outfile kzdiff",
+		"format": "biome format --write",
+		"lint": "biome lint --fix"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
 }
