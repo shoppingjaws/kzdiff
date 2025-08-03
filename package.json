@@ -2,7 +2,7 @@
 	"name": "kzdiff",
 	"module": "cli.ts",
 	"type": "module",
-	"private": true,
+	"private": false,
 	"scripts": {
 		"test": "bun test",
 		"test:cli": "bun test cli.test.ts",
