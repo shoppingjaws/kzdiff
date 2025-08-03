@@ -36,7 +36,7 @@ describe("kzdiff CLI", () => {
 		});
 
 		test("should compare with auto-detected default branch", async () => {
-			const { stdout, exitCode } = await runCLI([EXAMPLE_PATH]);
+			const { stdout, exitCode } = await runCLI([EXAMPLE_PATH, "-v"]);
 
 			expect(exitCode).toBe(0);
 			expect(stdout).toContain("Building local version...");
@@ -49,6 +49,7 @@ describe("kzdiff CLI", () => {
 				EXAMPLE_PATH,
 				"-r",
 				TEST_COMMIT,
+				"-v",
 			]);
 
 			expect(exitCode).toBe(0);
@@ -57,11 +58,12 @@ describe("kzdiff CLI", () => {
 			expect(stdout).toContain(
 				`Showing diff between ${TEST_COMMIT} and local changes:`,
 			);
-			expect(stdout).toContain("No differences found");
+			// The commit has different content, so we expect to see diff output
+			expect(stdout).toContain("@@");
 		});
 
 		test("should compare with branch name", async () => {
-			const { stdout, exitCode } = await runCLI([EXAMPLE_PATH, "-b", "main"]);
+			const { stdout, exitCode } = await runCLI([EXAMPLE_PATH, "-b", "main", "-v"]);
 
 			expect(exitCode).toBe(0);
 			expect(stdout).toContain("Building local version...");
@@ -70,8 +72,8 @@ describe("kzdiff CLI", () => {
 		});
 
 		test("should accept -b and --branch aliases", async () => {
-			const result1 = await runCLI([EXAMPLE_PATH, "-b", "main"]);
-			const result2 = await runCLI([EXAMPLE_PATH, "--branch", "main"]);
+			const result1 = await runCLI([EXAMPLE_PATH, "-b", "main", "-v"]);
+			const result2 = await runCLI([EXAMPLE_PATH, "--branch", "main", "-v"]);
 
 			expect(result1.exitCode).toBe(0);
 			expect(result2.exitCode).toBe(0);
@@ -80,8 +82,8 @@ describe("kzdiff CLI", () => {
 		});
 
 		test("should accept -r and --ref aliases", async () => {
-			const result1 = await runCLI([EXAMPLE_PATH, "-r", TEST_COMMIT]);
-			const result2 = await runCLI([EXAMPLE_PATH, "--ref", TEST_COMMIT]);
+			const result1 = await runCLI([EXAMPLE_PATH, "-r", TEST_COMMIT, "-v"]);
+			const result2 = await runCLI([EXAMPLE_PATH, "--ref", TEST_COMMIT, "-v"]);
 
 			expect(result1.exitCode).toBe(0);
 			expect(result2.exitCode).toBe(0);
@@ -96,6 +98,7 @@ describe("kzdiff CLI", () => {
 		test("should pass kustomize options after --", async () => {
 			const { stdout, exitCode } = await runCLI([
 				EXAMPLE_PATH,
+				"-v",
 				"--",
 				"--enable-helm",
 			]);
@@ -110,6 +113,7 @@ describe("kzdiff CLI", () => {
 				EXAMPLE_PATH,
 				"-b",
 				"main",
+				"-v",
 				"--",
 				"--enable-helm",
 			]);
@@ -162,19 +166,20 @@ describe("kzdiff CLI", () => {
 	});
 
 	describe("Output verification", () => {
-		test("should show no differences when comparing same content", async () => {
-			// Compare with the test commit which should have same content
-			const { stdout } = await runCLI([EXAMPLE_PATH, "-r", TEST_COMMIT]);
+		test("should show differences when comparing different content", async () => {
+			// Compare with the test commit which has different content
+			const { stdout } = await runCLI([EXAMPLE_PATH, "-r", TEST_COMMIT, "-v"]);
 
-			expect(stdout).toContain("No differences found");
-			expect(stdout).not.toContain("---");
-			expect(stdout).not.toContain("+++");
+			// Should show diff output
+			expect(stdout).toContain("---");
+			expect(stdout).toContain("+++");
+			expect(stdout).toContain("@@");
 		});
 
 		test("should show colored output by default", async () => {
 			// When there are differences, diff should attempt to use colors
 			// This is hard to test directly, but we can verify the diff command runs
-			const { stdout } = await runCLI([EXAMPLE_PATH, "-b", "main"]);
+			const { stdout } = await runCLI([EXAMPLE_PATH, "-b", "main", "-v"]);
 
 			expect(stdout).toContain("Showing diff between");
 			// The actual color codes would appear if there were differences
@@ -182,23 +187,18 @@ describe("kzdiff CLI", () => {
 	});
 
 	describe("Debug output", () => {
-		test("should show debug output when DEBUG env is set", async () => {
-			process.env.DEBUG = "1";
-
+		test("should show debug output when verbose flag is set", async () => {
 			const { stdout, stderr } = await runCLI([
 				EXAMPLE_PATH,
 				"-r",
 				TEST_COMMIT,
+				"-v",
 			]);
 
-			// Debug output might be in stdout or stderr depending on the implementation
-			const combinedOutput = stdout + stderr;
-
-			expect(combinedOutput).toContain("[kzdiff-cli]");
-			expect(combinedOutput).toContain("Processing path:");
-			expect(combinedOutput).toContain("Using remote ref:");
-
-			delete process.env.DEBUG;
+			// Debug output should be in stdout
+			expect(stdout).toContain("[kzdiff-cli]");
+			expect(stdout).toContain("Processing path:");
+			expect(stdout).toContain("Using remote ref:");
 		});
 	});
 
@@ -208,6 +208,7 @@ describe("kzdiff CLI", () => {
 				EXAMPLE_PATH,
 				"-r",
 				TEST_COMMIT,
+				"-v",
 			]);
 
 			expect(exitCode).toBe(0);
