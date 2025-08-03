@@ -104,4 +104,31 @@ describe("kustomizeBuildToTmp", () => {
     expect(result.stdout).toBeTruthy();
     // Note: stderr may contain deprecation warnings, which is OK
   });
+
+  test("should return empty file when remote directory does not exist", async () => {
+    // Get the current remote URL
+    const remoteUrl = await $`git config --get remote.origin.url`.text();
+    const remote = remoteUrl.trim();
+    
+    // Use a non-existent directory path
+    const nonExistentPath = "this/directory/does/not/exist";
+    
+    const outputPath = await kustomizeBuildToTmp(
+      nonExistentPath,
+      "before.yaml",
+      undefined,
+      { ref: "main", remote }
+    );
+    
+    // Check if file exists
+    const stats = await stat(outputPath);
+    expect(stats.isFile()).toBe(true);
+    
+    // Check if file is empty
+    const content = await readFile(outputPath, "utf-8");
+    expect(content).toBe("");
+    
+    // Check if filename is correct
+    expect(outputPath).toMatch(/before\.yaml$/);
+  });
 });
