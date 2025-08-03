@@ -8,10 +8,11 @@ namePrefix: prod-
 
 commonLabels:
   environment: production
+  team: platform
 
 replicas:
   - name: example-app
-    count: 3
+    count: 5
 
 patches:
   - target:
@@ -20,10 +21,10 @@ patches:
     patch: |
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: nginx:1.24-alpine
+        value: nginx:1.25-alpine
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/memory
-        value: "256Mi"
+        value: "512Mi"
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/cpu
         value: "200m"
