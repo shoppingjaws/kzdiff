@@ -59,6 +59,23 @@ export async function kustomizeBuildToTmp(
     
     return outputPath;
   } catch (error: any) {
+    // Check if this is a remote build and the directory doesn't exist
+    if (buildOptions?.remote && error.stderr) {
+      const errorMessage = error.stderr.toString().toLowerCase();
+      const notFoundPatterns = [
+        'does not exist',
+        'no such file or directory'
+      ];
+      
+      const isNotFound = notFoundPatterns.some(pattern => errorMessage.includes(pattern));
+      
+      if (isNotFound) {
+        debug(`Remote directory not found, creating empty file at ${outputPath}`);
+        await writeFile(outputPath, '');
+        return outputPath;
+      }
+    }
+    
     console.error(`[kustomizeBuildToTmp] Error: ${error}`);
     if (error.stderr) {
       console.error(`[kustomizeBuildToTmp] stderr: ${error.stderr}`);
