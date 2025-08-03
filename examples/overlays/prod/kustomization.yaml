@@ -24,10 +24,10 @@ patches:
         value: nginx:1.25-alpine
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/memory
-        value: "512Mi"
+        value: "256Mi"
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/cpu
-        value: "200m"
+        value: "100m"
 
   - target:
       kind: Service
