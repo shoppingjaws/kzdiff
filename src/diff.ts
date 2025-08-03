@@ -24,7 +24,7 @@ export async function showDiff(
 		}
 		args.push(file1, file2);
 
-		const result = await $`${args}`.nothrow();
+		const result = await $`${args}`.quiet().nothrow();
 
 		if (result.exitCode === 0) {
 			console.log("No differences found.");
@@ -36,7 +36,7 @@ export async function showDiff(
 			if (color) {
 				debug("Retrying without color option");
 				const fallbackResult =
-					await $`diff -u${context} ${file1} ${file2}`.nothrow();
+					await $`diff -u${context} ${file1} ${file2}`.quiet().nothrow();
 				if (fallbackResult.exitCode === 1) {
 					console.log(fallbackResult.stdout.toString());
 				} else {
