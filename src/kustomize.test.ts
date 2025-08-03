@@ -137,4 +137,41 @@ describe("kustomizeBuildToTmp", () => {
 		// Check if filename is correct
 		expect(outputPath).toMatch(/before\.yaml$/);
 	});
+
+	test("should return empty file when directory exists in current branch but not in comparison branch", async () => {
+		// Get the current remote URL
+		const remoteUrl = await $`git config --get remote.origin.url`.text();
+		const remote = remoteUrl.trim();
+
+		// Use examples/overlays/nothing which exists in current branch but not in 3b4d8b0121ac84d7678591d8139b6eb5f88061d6
+		const pathExistsNowButNotBefore = "examples/overlays/nothing";
+
+		// Try to build from an older commit where this directory doesn't exist
+		const outputPath = await kustomizeBuildToTmp(
+			pathExistsNowButNotBefore,
+			"before.yaml",
+			undefined,
+			{ ref: "3b4d8b0121ac84d7678591d8139b6eb5f88061d6", remote },
+		);
+
+		// Check if file exists
+		const stats = await stat(outputPath);
+		expect(stats.isFile()).toBe(true);
+
+		// Check if file is empty (because directory doesn't exist in that ref)
+		const content = await Bun.file(outputPath).text();
+		expect(content).toBe("");
+
+		// Check if filename is correct
+		expect(outputPath).toMatch(/before\.yaml$/);
+
+		// Verify that the directory DOES exist in current branch and builds successfully
+		const currentBranchOutput = await kustomizeBuildToTmp(
+			pathExistsNowButNotBefore,
+			"after.yaml",
+		);
+		const currentContent = await Bun.file(currentBranchOutput).text();
+		expect(currentContent.length).toBeGreaterThan(0);
+		expect(currentContent).toContain("apiVersion:");
+	});
 });
