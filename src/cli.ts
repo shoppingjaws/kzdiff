@@ -11,7 +11,7 @@ async function main() {
 	const args = process.argv.slice(2);
 
 	// Show help function
-	const showHelp = (exitCode: number = 0) => {
+	const   showHelp   =   (exitCode: number = 0)   =>   {
 		const progName = "kzdiff";
 		const helpText = `Usage: ${progName} <kustomize-path> [options...]
 

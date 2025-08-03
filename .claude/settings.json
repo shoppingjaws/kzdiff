@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'if [[ \"$CLAUDE_HOOK_ARG_FILE_PATH\" == *.ts ]]; then cd \"$CLAUDE_HOOK_CWD\" && bun run format; fi'"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_HOOK_CWD\" && bun install"
+          }
+        ]
+      }
+    ]
+  }
+}
