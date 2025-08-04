@@ -61,8 +61,14 @@ jobs:
       - name: Build package
         run: bun run build
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
       - run: bun pm pack
-      - run: bunx npm publish ./kzdiff-${{ needs.check-version.outputs.version }}.tgz --provenance
+      - run: npm publish ./kzdiff-${{ needs.check-version.outputs.version }}.tgz --provenance
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
