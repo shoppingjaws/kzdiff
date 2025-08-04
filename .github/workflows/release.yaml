@@ -62,8 +62,8 @@ jobs:
       - name: Build package
         run: bun run build
 
-      - name: Publish to npm
-        run: bunx npm publish --provenance --access public
+      - run: bun pm pack
+      - run: bunx npm publish ./kzdiff-${{ needs.check-version.outputs.version }}.tgz --provenance
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
