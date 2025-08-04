@@ -42,7 +42,7 @@ jobs:
 
   publish:
     needs: check-version
-    if: needs.check-version.outputs.should-publish == 'true'
+    # if: needs.check-version.outputs.should-publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -63,8 +63,6 @@ jobs:
 
       - name: Publish to npm
         run: bun publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
