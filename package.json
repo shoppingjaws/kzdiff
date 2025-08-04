@@ -1,9 +1,30 @@
 {
 	"name": "kzdiff",
-	"module": "cli.ts",
-	"type": "module",
 	"version": "1.2.0",
-	"private": false,
+	"description": "CLI tool for comparing Kustomize build results between branches",
+	"keywords": ["kustomize", "kubernetes", "diff", "k8s", "gitops"],
+	"author": "shoppingjaws",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/shoppingjaws/kzdiff"
+	},
+	"homepage": "https://github.com/shoppingjaws/kzdiff#readme",
+	"bugs": {
+		"url": "https://github.com/shoppingjaws/kzdiff/issues"
+	},
+	"type": "module",
+	"exports": "./src/cli.ts",
+	"bin": {
+		"kzdiff": "./src/cli.ts"
+	},
+	"files": [
+		"src/",
+		"LICENSE",
+		"package.json",
+		"tsconfig.json",
+		"examples/"
+	],
 	"scripts": {
 		"test": "bun test",
 		"test:cli": "bun test cli.test.ts",
