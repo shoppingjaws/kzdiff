@@ -20,6 +20,7 @@ Options:
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
   -h, --help               Show this help message
   -v, --verbose            Enable verbose debug logging
+  --version                Show version number
   --                       Pass remaining arguments to kustomize
 
 Examples:
@@ -34,6 +35,13 @@ Note: When using commit hashes, use the full 40-character SHA`;
 		console.log(helpText);
 		process.exit(exitCode);
 	};
+
+	// Check for version flag
+	if (args.includes("--version")) {
+		const { version } = await import("../package.json");
+		console.log(version);
+		process.exit(0);
+	}
 
 	// Check for help flag
 	if (args.includes("-h") || args.includes("--help")) {
