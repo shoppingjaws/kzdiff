@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - package.json
 
 jobs:
   check-version:
@@ -29,10 +31,10 @@ jobs:
           # Restore current package.json
           git checkout HEAD package.json
           # Compare versions
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
             echo "Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
             echo "should-publish=true" >> $GITHUB_OUTPUT
-            echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           else
             echo "Version unchanged"
             echo "should-publish=false" >> $GITHUB_OUTPUT
