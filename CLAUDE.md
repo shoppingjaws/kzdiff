@@ -4,25 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-kzdiff is a CLI tool for comparing Kustomize build results between branches. It's built with Bun, TypeScript, and follows functional programming patterns with comprehensive error handling.
+kzdiff is a CLI tool for comparing Kustomize build results between branches. It's built with Bun, TypeScript, and uses native Git remote support with Kustomize's remote URL feature.
 
 ## Commands
 
 ### Development
 ```bash
-# Run tests
+# Run all tests
 bun test
 
-# Run CLI locally
-bun run kzdiff
-# Or directly
-bun run ./src/kzdiff-cli.ts
+# Run specific test files
+bun test cli.test.ts
+bun test diff.test.ts
+bun test kustomize.test.ts
 
-# Build for Bun runtime
+# Run unit tests only (excluding CLI integration tests)
+bun test:unit
+
+# Format code with Biome
+bun run format
+
+# Lint and fix code with Biome
+bun run lint
+
+# Build standalone binary
 bun run build
-
-# Create standalone binary
-bun run build:standalone
 
 # Install globally for development
 bun link
@@ -30,52 +36,45 @@ bun link
 
 ### Common Usage
 ```bash
-# Compare current directory with main branch
-kzdiff
+# Show version
+kzdiff --version
 
-# Compare specific directory
+# Compare with auto-detected default branch (main/master)
 kzdiff ./overlays/production
 
-# Compare with different base branch
-kzdiff -b develop
+# Compare with specific branch or commit
+kzdiff ./overlays/production -b develop
+kzdiff ./overlays/production -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
 
-# Compare remote repository
-kzdiff -r https://github.com/kubernetes-sigs/kustomize.git /examples/springboot/base
+# Pass options to kustomize
+kzdiff ./overlays/production -- --enable-helm
+
+# Enable verbose debug output
+kzdiff ./overlays/production -v
 ```
 
 ## Architecture
 
-The codebase follows a modular architecture:
+The codebase consists of focused modules:
 
-- **kzdiff-cli.ts**: CLI entry point with argument parsing
-- **kzdiff.ts**: Core logic for Git operations and Kustomize builds
-- **utils.ts**: Utility functions for Git, Kustomize, and file operations
-- **diff.ts**: YAML diffing and formatting with colored output
-- **cli.ts**: Public API exports
+- **cli.ts**: CLI entry point that handles argument parsing, Git operations, and orchestrates the diff process
+- **kustomize.ts**: Handles Kustomize builds using remote URL syntax for Git references
+- **diff.ts**: Wraps the system `diff` command with color support and fallback options
+- **debug.ts**: Provides conditional debug logging controlled by verbose flag
 
-Key patterns:
-- Async/await throughout
-- Error-first design with detailed error messages
-- Temporary directory management for Git operations
-- Fixture-based testing in tests/fixtures/
+Key implementation details:
+- Uses Kustomize's native remote URL support (`https://github.com/owner/repo//path?ref=branch`)
+- Temporary directory management for build outputs
+- Auto-detects default branch when no ref is specified
+- Handles non-existent remote directories gracefully (creates empty file)
 
-## Development Guidelines
+## Tool Requirements
 
-1. **Always use Bun** - All commands should use `bun`, not `npm`
-2. **TypeScript strict mode** - The project uses strict TypeScript configuration
-3. **Test-driven development** - Write tests using Bun's built-in test runner
-4. **Error handling** - Follow the established pattern of throwing descriptive errors
-5. **Git state management** - Be careful with stashing/restoring when working with Git operations
+The project uses mise for tool version management:
+- Bun 1.2.19+
+- Kustomize 5.7.1
+- Biome (installed via npm)
 
-## Testing
+## Publishing
 
-Tests use fixture-based approach with pre-built Kustomize results:
-- Test fixtures are in `tests/fixtures/`
-- Each test case has `from/result/build.yaml` and `to/result/build.yaml`
-- Run single test: `bun test -t "test name"`
-
-## Dependencies
-
-- **Runtime**: Bun, Git, Kustomize (managed via mise)
-- **Libraries**: chalk (colors), diff (text diffing)
-- **Development**: TypeScript, @types/bun, @types/diff
+The package is published to npm as `kzdiff`. Version is managed in package.json and displayed via `--version` flag.

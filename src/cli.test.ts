@@ -35,6 +35,14 @@ describe("kzdiff CLI", () => {
 			expect(stdout).toContain("-r, --ref");
 		});
 
+		test("should show version when --version flag is used", async () => {
+			const { stdout, exitCode } = await runCLI(["--version"]);
+			const { version } = await import("../package.json");
+
+			expect(exitCode).toBe(0);
+			expect(stdout.trim()).toBe(version);
+		});
+
 		test("should compare with auto-detected default branch", async () => {
 			const { stdout, exitCode } = await runCLI([EXAMPLE_PATH, "-v"]);
 
