@@ -41,7 +41,7 @@ jobs:
 
   publish:
     needs: check-version
-    # if: needs.check-version.outputs.should-publish == 'true'
+    if: needs.check-version.outputs.should-publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
