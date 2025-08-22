@@ -34,7 +34,7 @@ describe("kzdiff CLI", () => {
 			expect(stdout).toContain("-b, --branch");
 			expect(stdout).toContain("-r, --ref");
 			expect(stdout).toContain("-f, --filter");
-			expect(stdout).toContain("Filter expressions:");
+			expect(stdout).toContain("Filter expressions (JSONPath):");
 		});
 
 		test("should show version when --version flag is used", async () => {
