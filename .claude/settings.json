@@ -1,29 +1,26 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(bun run lint)",
-      "Bash(bun run format)"
-    ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit(*.ts)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun run format"
-          },
-          {
-            "type": "command",
-            "command": "bun run lint"
-          },
-          {
-            "type": "command",
-            "command": "bunx tsc"
-          }
-        ]
-      }
-    ]
-  }
+	"permissions": {
+		"allow": ["Bash(bun run lint)", "Bash(bun run format)"]
+	},
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Edit(*.ts)",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bun run format"
+					},
+					{
+						"type": "command",
+						"command": "bun run lint"
+					},
+					{
+						"type": "command",
+						"command": "bunx tsc"
+					}
+				]
+			}
+		]
+	}
 }

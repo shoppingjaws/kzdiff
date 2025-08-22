@@ -38,7 +38,9 @@
 		"test:unit": "bun test --ignore cli.test.ts",
 		"build": "bun build ./src/cli.ts --compile --outfile kzdiff",
 		"format": "biome format --write",
+		"format:check": "biome format",
 		"lint": "biome lint --fix",
+		"lint:check": "biome lint",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
