@@ -1,9 +1,22 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { filterYaml } from "./filter";
-import { mkdtemp, rm } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import * as yaml from "js-yaml";
+
+interface K8sResource {
+	kind?: string;
+	metadata?: {
+		name?: string;
+		namespace?: string;
+		labels?: Record<string, string>;
+	};
+	spec?: {
+		replicas?: number;
+		[key: string]: unknown;
+	};
+}
 
 describe("filterYaml", () => {
 	let tempDir: string;
@@ -46,11 +59,11 @@ spec:
 			await filterYaml(testFile, ["kind=Deployment"]);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as Array<{ kind: string }>;
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].kind).toBe("Deployment");
-			expect(docs[1].kind).toBe("Deployment");
+			expect(docs[0]?.kind).toBe("Deployment");
+			expect(docs[1]?.kind).toBe("Deployment");
 		});
 
 		test("should filter by metadata.name", async () => {
@@ -80,11 +93,11 @@ spec:
 			await filterYaml(testFile, ["name=app-one"]);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].metadata.name).toBe("app-one");
-			expect(docs[1].metadata.name).toBe("app-one");
+			expect(docs[0]?.metadata?.name).toBe("app-one");
+			expect(docs[1]?.metadata?.name).toBe("app-one");
 		});
 
 		test("should filter by namespace", async () => {
@@ -117,11 +130,11 @@ spec:
 			await filterYaml(testFile, ["namespace=production"]);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].metadata.namespace).toBe("production");
-			expect(docs[1].metadata.namespace).toBe("production");
+			expect(docs[0]?.metadata?.namespace).toBe("production");
+			expect(docs[1]?.metadata?.namespace).toBe("production");
 		});
 	});
 
@@ -153,10 +166,10 @@ data:
 			await filterYaml(testFile, ["kind=Deployment", "kind=Service"]);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			const kinds = docs.map((d: any) => d.kind).sort();
+			const kinds = docs.map((d) => d.kind).sort();
 			expect(kinds).toEqual(["Deployment", "Service"]);
 		});
 	});
@@ -189,11 +202,11 @@ spec:
 			await filterYaml(testFile, ["$[?(@.spec.replicas>2)]"]);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].spec.replicas).toBeGreaterThan(2);
-			expect(docs[1].spec.replicas).toBeGreaterThan(2);
+			expect(docs[0]?.spec?.replicas).toBeGreaterThan(2);
+			expect(docs[1]?.spec?.replicas).toBeGreaterThan(2);
 		});
 
 		test("should support complex JSONPath with labels", async () => {
@@ -231,11 +244,11 @@ spec:
 			await filterYaml(testFile, ["$[?(@.metadata.labels.team=='platform')]"]);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].metadata.labels.team).toBe("platform");
-			expect(docs[1].metadata.labels.team).toBe("platform");
+			expect(docs[0]?.metadata?.labels?.team).toBe("platform");
+			expect(docs[1]?.metadata?.labels?.team).toBe("platform");
 		});
 	});
 
@@ -282,11 +295,11 @@ metadata:
 			await filterYaml(testFile, []);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			// Content should be unchanged
 			expect(docs.length).toBe(1);
-			expect(docs[0].kind).toBe("Deployment");
+			expect(docs[0]?.kind).toBe("Deployment");
 		});
 	});
 
@@ -307,10 +320,10 @@ metadata:
 			await filterYaml(testFile, ["kind=Service"]);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(1);
-			expect(docs[0].kind).toBe("Service");
+			expect(docs[0]?.kind).toBe("Service");
 		});
 
 		test("should handle values with spaces", async () => {
@@ -329,10 +342,10 @@ metadata:
 			await filterYaml(testFile, ['name="my app deployment"']);
 
 			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered);
+			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(1);
-			expect(docs[0].metadata.name).toBe("my app deployment");
+			expect(docs[0]?.metadata?.name).toBe("my app deployment");
 		});
 	});
 });

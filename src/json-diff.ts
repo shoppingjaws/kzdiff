@@ -244,7 +244,7 @@ function shouldGroupTogether(
 	// Get the paths
 	const lastDiff = currentGroup[currentGroup.length - 1];
 	if (!lastDiff) return false;
-	
+
 	const lastParts = lastDiff.path.split(".");
 	const newParts = newDiff.path.split(".");
 
@@ -308,7 +308,7 @@ function findOptimalBasePath(paths: string[]): string {
 	const commonParts: string[] = [];
 	const firstPath = splitPaths[0];
 	if (!firstPath) return "";
-	
+
 	for (let i = 0; i < minLength; i++) {
 		const part = firstPath[i];
 		if (part && splitPaths.every((p) => p[i] === part)) {
@@ -364,7 +364,7 @@ function formatGroupedDiff(group: DiffGroup): string {
 		for (let i = 0; i < parts.length; i++) {
 			const part = parts[i];
 			if (!part) continue;
-			
+
 			if (!current.children.has(part)) {
 				current.children.set(part, {
 					path: parts.slice(0, i + 1).join("."),

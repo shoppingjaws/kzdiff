@@ -3,7 +3,6 @@
 import { $ } from "bun";
 import { kustomizeBuildToTmp } from "./kustomize";
 import { createDebugLogger, setVerbose } from "./debug";
-import { showDiff } from "./diff";
 import { filterYaml } from "./filter";
 import { jsonDiff } from "./json-diff";
 import { readFile } from "node:fs/promises";
@@ -69,7 +68,7 @@ Note: When using commit hashes, use the full 40-character SHA`;
 		showHelp(1);
 	}
 
-	const kustomizePath = args[0];
+	const kustomizePath = args[0] as string; // We know args[0] exists after the length check
 	let remoteRef: string | null = null;
 	let kustomizeOptions: string[] = [];
 	let verbose = false;
@@ -83,8 +82,8 @@ Note: When using commit hashes, use the full 40-character SHA`;
 			args[i] === "-r" ||
 			args[i] === "--ref"
 		) {
-			if (i + 1 < args.length) {
-				remoteRef = args[i + 1];
+			if (i + 1 < args.length && args[i + 1] !== undefined) {
+				remoteRef = args[i + 1] ?? null;
 				i++; // Skip next argument
 			} else {
 				console.error(
@@ -93,8 +92,9 @@ Note: When using commit hashes, use the full 40-character SHA`;
 				process.exit(1);
 			}
 		} else if (args[i] === "-f" || args[i] === "--filter") {
-			if (i + 1 < args.length) {
-				filterOptions.push(args[i + 1]);
+			const nextArg = args[i + 1];
+			if (i + 1 < args.length && nextArg !== undefined) {
+				filterOptions.push(nextArg);
 				i++; // Skip next argument
 			} else {
 				console.error(`Error: ${args[i]} requires a filter expression`);
