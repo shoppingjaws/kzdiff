@@ -60,26 +60,31 @@ describe("kzdiff CLI", () => {
 			);
 			// The commit has different content, so we expect to see diff output
 			expect(stdout).toContain("@@");
-			
+
 			// Verify specific differences in the output
 			// The test commit has replica count 3, current has 5
 			expect(stdout).toMatch(/replicas:\s*3/);
 			expect(stdout).toMatch(/replicas:\s*5/);
-			
+
 			// The test commit uses nginx:1.24-alpine, current uses nginx:1.25-alpine
 			expect(stdout).toContain("nginx:1.24-alpine");
 			expect(stdout).toContain("nginx:1.25-alpine");
-			
+
 			// The test commit has memory limit 256Mi, current has 512Mi
 			expect(stdout).toContain('"256Mi"');
 			expect(stdout).toContain('"512Mi"');
-			
+
 			// Current version has additional team label that doesn't exist in test commit
 			expect(stdout).toContain("team: platform");
 		});
 
 		test("should compare with branch name", async () => {
-			const { stdout, exitCode } = await runCLI([EXAMPLE_PATH, "-b", "main", "-v"]);
+			const { stdout, exitCode } = await runCLI([
+				EXAMPLE_PATH,
+				"-b",
+				"main",
+				"-v",
+			]);
 
 			expect(exitCode).toBe(0);
 			expect(stdout).toContain("Building local version...");

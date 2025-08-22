@@ -35,8 +35,9 @@ export async function showDiff(
 			// Try without color if --color is not supported
 			if (color) {
 				debug("Retrying without color option");
-				const fallbackResult =
-					await $`diff -u${context} ${file1} ${file2}`.quiet().nothrow();
+				const fallbackResult = await $`diff -u${context} ${file1} ${file2}`
+					.quiet()
+					.nothrow();
 				if (fallbackResult.exitCode === 1) {
 					console.log(fallbackResult.stdout.toString());
 				} else {
