@@ -4,14 +4,25 @@ import { createDebugLogger } from "./debug";
 
 const debugLog = createDebugLogger("json-diff");
 
+// Define types for YAML values
+type YamlValue =
+	| string
+	| number
+	| boolean
+	| null
+	| undefined
+	| YamlValue[]
+	| { [key: string]: YamlValue };
+type FlatValue = string | number | boolean | null | undefined;
+
 interface DiffResult {
 	path: string;
 	type: "added" | "removed" | "modified";
-	oldValue?: any;
-	newValue?: any;
+	oldValue?: FlatValue;
+	newValue?: FlatValue;
 	context?: {
-		before: Array<{ key: string; value: any }>;
-		after: Array<{ key: string; value: any }>;
+		before: Array<{ key: string; value: FlatValue }>;
+		after: Array<{ key: string; value: FlatValue }>;
 	};
 }
 
@@ -22,7 +33,7 @@ interface K8sResource {
 		name?: string;
 		namespace?: string;
 	};
-	[key: string]: any;
+	[key: string]: YamlValue;
 }
 
 interface DiffGroup {
@@ -34,8 +45,10 @@ function parseYAML(content: string): K8sResource[] {
 	if (!content.trim()) return [];
 
 	try {
-		const docs = yaml.loadAll(content) as any[];
-		return docs.filter((doc) => doc && typeof doc === "object");
+		const docs = yaml.loadAll(content) as unknown[];
+		return docs.filter(
+			(doc): doc is K8sResource => doc !== null && typeof doc === "object",
+		);
 	} catch (error) {
 		debugLog(`Error parsing YAML: ${error}`);
 		return [];
@@ -54,10 +67,10 @@ function getResourceKey(resource: K8sResource): string {
 }
 
 function flattenObject(
-	obj: any,
+	obj: YamlValue,
 	prefix = "",
-	result: Record<string, any> = {},
-): Record<string, any> {
+	result: Record<string, FlatValue> = {},
+): Record<string, FlatValue> {
 	if (obj === null || obj === undefined) {
 		result[prefix] = obj;
 		return result;
@@ -89,21 +102,27 @@ function flattenObject(
 }
 
 function getContext(
-	flatObj: Record<string, any>,
+	flatObj: Record<string, FlatValue>,
 	path: string,
 	contextSize = 2,
 ): {
-	before: Array<{ key: string; value: any }>;
-	after: Array<{ key: string; value: any }>;
+	before: Array<{ key: string; value: FlatValue }>;
+	after: Array<{ key: string; value: FlatValue }>;
 } {
 	const keys = Object.keys(flatObj).sort();
 	const index = keys.indexOf(path);
 
-	const before: Array<{ key: string; value: any }> = [];
-	const after: Array<{ key: string; value: any }> = [];
+	const before: Array<{ key: string; value: FlatValue }> = [];
+	const after: Array<{ key: string; value: FlatValue }> = [];
 
 	for (let i = Math.max(0, index - contextSize); i < index; i++) {
-		before.push({ key: keys[i], value: flatObj[keys[i]] });
+		const key = keys[i];
+		if (key !== undefined) {
+			const value = flatObj[key];
+			if (value !== undefined) {
+				before.push({ key, value });
+			}
+		}
 	}
 
 	for (
@@ -111,7 +130,13 @@ function getContext(
 		i <= Math.min(keys.length - 1, index + contextSize);
 		i++
 	) {
-		after.push({ key: keys[i], value: flatObj[keys[i]] });
+		const key = keys[i];
+		if (key !== undefined) {
+			const value = flatObj[key];
+			if (value !== undefined) {
+				after.push({ key, value });
+			}
+		}
 	}
 
 	return { before, after };
@@ -156,7 +181,7 @@ function compareResources(
 	return diffs;
 }
 
-function formatValue(value: any, indent = ""): string {
+function formatValue(value: FlatValue, indent = ""): string {
 	if (value === null) return "null";
 	if (value === undefined) return "undefined";
 	if (typeof value === "string") {
@@ -168,46 +193,7 @@ function formatValue(value: any, indent = ""): string {
 		}
 		return value.includes(" ") || value === "" ? `"${value}"` : value;
 	}
-	if (typeof value === "object") {
-		return JSON.stringify(value, null, 2)
-			.split("\n")
-			.map((line, i) => (i === 0 ? line : `${indent}${line}`))
-			.join("\n");
-	}
 	return String(value);
-}
-
-function getCommonPrefix(paths: string[]): string {
-	if (paths.length === 0) return "";
-	if (paths.length === 1) {
-		// For single path, get parent path
-		const parts = paths[0].split(".");
-		const lastPart = parts[parts.length - 1];
-
-		// If the last part contains array index, include it in the base path
-		if (lastPart.includes("[")) {
-			return paths[0];
-		}
-
-		// Otherwise return parent path
-		return parts.slice(0, -1).join(".");
-	}
-
-	// For multiple paths, find common prefix
-	const splitPaths = paths.map((p) => p.split("."));
-	const minLength = Math.min(...splitPaths.map((p) => p.length));
-
-	const commonParts: string[] = [];
-	for (let i = 0; i < minLength; i++) {
-		const part = splitPaths[0][i];
-		if (splitPaths.every((p) => p[i] === part)) {
-			commonParts.push(part);
-		} else {
-			break;
-		}
-	}
-
-	return commonParts.join(".");
 }
 
 function groupDiffs(diffs: DiffResult[]): DiffGroup[] {
@@ -222,6 +208,7 @@ function groupDiffs(diffs: DiffResult[]): DiffGroup[] {
 
 	for (let i = 0; i < sortedDiffs.length; i++) {
 		const diff = sortedDiffs[i];
+		if (!diff) continue;
 
 		if (currentGroup.length === 0) {
 			// Start new group
@@ -256,6 +243,8 @@ function shouldGroupTogether(
 ): boolean {
 	// Get the paths
 	const lastDiff = currentGroup[currentGroup.length - 1];
+	if (!lastDiff) return false;
+	
 	const lastParts = lastDiff.path.split(".");
 	const newParts = newDiff.path.split(".");
 
@@ -288,8 +277,8 @@ function shouldGroupTogether(
 		const newField = newParts[newParts.length - 1];
 
 		// If the fields are very different (e.g., one is array index, other is not), separate
-		const lastIsArray = lastField.includes("[");
-		const newIsArray = newField.includes("[");
+		const lastIsArray = lastField?.includes("[") ?? false;
+		const newIsArray = newField?.includes("[") ?? false;
 
 		if (lastIsArray !== newIsArray) {
 			return false;
@@ -306,7 +295,9 @@ function findOptimalBasePath(paths: string[]): string {
 	if (paths.length === 0) return "";
 	if (paths.length === 1) {
 		// For single path, use parent
-		const parts = paths[0].split(".");
+		const firstPath = paths[0];
+		if (!firstPath) return "";
+		const parts = firstPath.split(".");
 		return parts.length > 1 ? parts.slice(0, -1).join(".") : "";
 	}
 
@@ -315,9 +306,12 @@ function findOptimalBasePath(paths: string[]): string {
 	const minLength = Math.min(...splitPaths.map((p) => p.length));
 
 	const commonParts: string[] = [];
+	const firstPath = splitPaths[0];
+	if (!firstPath) return "";
+	
 	for (let i = 0; i < minLength; i++) {
-		const part = splitPaths[0][i];
-		if (splitPaths.every((p) => p[i] === part)) {
+		const part = firstPath[i];
+		if (part && splitPaths.every((p) => p[i] === part)) {
 			commonParts.push(part);
 		} else {
 			break;
@@ -334,61 +328,12 @@ function findOptimalBasePath(paths: string[]): string {
 
 		const uniqueParents = [...new Set(parents)];
 		if (uniqueParents.length === 1) {
-			return uniqueParents[0];
+			const firstParent = uniqueParents[0];
+			return firstParent ?? "";
 		}
 	}
 
 	return commonParts.join(".");
-}
-
-function getIndentLevel(path: string, basePath: string): number {
-	if (!basePath) return 0;
-	const relativePath = path.substring(basePath.length + 1);
-	return relativePath.split(".").length - 1;
-}
-
-function formatYamlPath(
-	path: string,
-	basePath: string,
-	indent: string = "  ",
-): string {
-	if (!basePath) {
-		return path;
-	}
-
-	const relativePath = path.substring(basePath.length + 1);
-	const parts = relativePath.split(".");
-	const result: string[] = [];
-
-	for (let i = 0; i < parts.length; i++) {
-		const part = parts[i];
-		const currentIndent = indent.repeat(i + 1);
-
-		if (part.includes("[")) {
-			// Handle array indices
-			const [name, ...indices] = part.split("[");
-			if (i === parts.length - 1) {
-				// Last part with array index
-				result.push(
-					currentIndent + name + indices.map((idx) => `[${idx}`).join(""),
-				);
-			} else {
-				result.push(currentIndent + name + ":");
-				indices.forEach((idx) => {
-					const cleanIdx = idx.replace("]", "");
-					result.push(currentIndent + indent + `- [${cleanIdx}]`);
-				});
-			}
-		} else if (i === parts.length - 1) {
-			// Last part
-			result.push(currentIndent + part);
-		} else {
-			// Intermediate parts
-			result.push(currentIndent + part + ":");
-		}
-	}
-
-	return result.join("\n");
 }
 
 function formatGroupedDiff(group: DiffGroup): string {
@@ -418,13 +363,19 @@ function formatGroupedDiff(group: DiffGroup): string {
 
 		for (let i = 0; i < parts.length; i++) {
 			const part = parts[i];
+			if (!part) continue;
+			
 			if (!current.children.has(part)) {
 				current.children.set(part, {
 					path: parts.slice(0, i + 1).join("."),
 					children: new Map(),
 				});
 			}
-			current = current.children.get(part)!;
+			const child = current.children.get(part);
+			if (!child) {
+				throw new Error(`Unexpected missing child node for part: ${part}`);
+			}
+			current = child;
 		}
 
 		current.diff = diff;
@@ -460,7 +411,7 @@ function formatGroupedDiff(group: DiffGroup): string {
 							if (ctxParent === diffParent) {
 								const ctxKey = ctxParts[ctxParts.length - 1];
 								// Skip if this is another diff
-								if (!group.diffs.some((d) => d.path === ctx.key)) {
+								if (ctxKey && !group.diffs.some((d) => d.path === ctx.key)) {
 									output.push(
 										`  \x1b[90m${nodeIndent}${ctxKey}: ${formatValue(ctx.value)}\x1b[0m`,
 									);
@@ -508,7 +459,7 @@ function formatGroupedDiff(group: DiffGroup): string {
 							if (ctxParent === diffParent) {
 								const ctxKey = ctxParts[ctxParts.length - 1];
 								// Skip if this is another diff
-								if (!group.diffs.some((d) => d.path === ctx.key)) {
+								if (ctxKey && !group.diffs.some((d) => d.path === ctx.key)) {
 									output.push(
 										`  \x1b[90m${nodeIndent}${ctxKey}: ${formatValue(ctx.value)}\x1b[0m`,
 									);
@@ -539,7 +490,7 @@ function formatDiff(resource: K8sResource, diffs: DiffResult[]): string {
 	const name = resource.metadata?.name || "unnamed";
 	const namespace = resource.metadata?.namespace;
 
-	output.push("\x1b[1m" + "─".repeat(80) + "\x1b[0m");
+	output.push(`\x1b[1m${"─".repeat(80)}\x1b[0m`);
 	output.push(`\x1b[1m● ${kind}\x1b[0m (${apiVersion})`);
 	if (namespace) {
 		output.push(`  \x1b[36mnamespace:\x1b[0m ${namespace}`);
@@ -584,7 +535,7 @@ export function jsonDiff(oldContent: string, newContent: string): string {
 
 		if (!oldResource && newResource) {
 			hasChanges = true;
-			output.push("\x1b[1m" + "─".repeat(80) + "\x1b[0m");
+			output.push(`\x1b[1m${"─".repeat(80)}\x1b[0m`);
 			output.push(
 				`\x1b[32m● ${newResource.kind} (ADDED)\x1b[0m ${newResource.apiVersion || ""}`,
 			);
@@ -599,7 +550,7 @@ export function jsonDiff(oldContent: string, newContent: string): string {
 			output.push("");
 		} else if (oldResource && !newResource) {
 			hasChanges = true;
-			output.push("\x1b[1m" + "─".repeat(80) + "\x1b[0m");
+			output.push(`\x1b[1m${"─".repeat(80)}\x1b[0m`);
 			output.push(
 				`\x1b[31m● ${oldResource.kind} (REMOVED)\x1b[0m ${oldResource.apiVersion || ""}`,
 			);

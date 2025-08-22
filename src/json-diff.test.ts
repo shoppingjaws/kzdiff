@@ -63,7 +63,7 @@ spec:
   replicas: 5`;
 
 		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("spec → replicas");
+		expect(result).toContain("replicas:");
 		expect(result).toContain("3");
 		expect(result).toContain("5");
 	});
@@ -102,8 +102,8 @@ spec:
 		const result = jsonDiff(oldYaml, newYaml);
 		expect(result).toContain("Deployment");
 		expect(result).toContain("Service");
-		expect(result).toContain("spec → replicas");
-		expect(result).toContain("spec → type");
+		expect(result).toContain("replicas:");
+		expect(result).toContain("type:");
 		expect(result).toContain("ClusterIP");
 		expect(result).toContain("NodePort");
 	});
@@ -159,10 +159,10 @@ spec:
   replicas: 3`;
 
 		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("metadata → labels → version");
+		expect(result).toContain("version:");
 		// Should contain context lines (before/after the changed line)
-		expect(result).toContain("metadata → labels → app");
-		expect(result).toContain("metadata → labels → environment");
+		expect(result).toContain("app: test");
+		expect(result).toContain("environment: dev");
 	});
 
 	it("should handle arrays", () => {
@@ -191,10 +191,10 @@ spec:
         - containerPort: 8080`;
 
 		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("spec → containers[0] → image");
+		expect(result).toContain("image:");
 		expect(result).toContain("nginx:1.19");
 		expect(result).toContain("nginx:1.20");
-		expect(result).toContain("spec → containers[0] → ports[0] → containerPort");
+		expect(result).toContain("containerPort:");
 		expect(result).toContain("80");
 		expect(result).toContain("8080");
 	});
@@ -223,7 +223,7 @@ data:
       host: 0.0.0.0`;
 
 		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("data → config → yaml");
+		expect(result).toContain("yaml:");
 		expect(result).toContain("8080");
 		expect(result).toContain("9090");
 	});

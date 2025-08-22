@@ -1,0 +1,23 @@
+{
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Edit(*.ts)",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bun run format"
+					},
+					{
+						"type": "command",
+						"command": "bun run lint"
+					},
+					{
+						"type": "command",
+						"command": "bunx tsc"
+					}
+				]
+			}
+		]
+	}
+}
