@@ -1,7 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { join } from "path";
-import { tmpdir } from "os";
-import { rm, mkdtemp } from "fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { rm, mkdtemp } from "node:fs/promises";
 import { showDiff } from "./diff";
 
 describe("showDiff", () => {
@@ -35,7 +35,7 @@ spec:
 		const originalLog = console.log;
 		let output = "";
 		console.log = (msg: string) => {
-			output += msg + "\n";
+			output += `${msg}\n`;
 		};
 
 		try {
@@ -70,7 +70,7 @@ spec:
 		const originalLog = console.log;
 		let output = "";
 		console.log = (msg: string) => {
-			output += msg + "\n";
+			output += `${msg}\n`;
 		};
 
 		try {
@@ -93,7 +93,7 @@ spec:
 		const originalLog = console.log;
 		let output = "";
 		console.log = (msg: string) => {
-			output += msg + "\n";
+			output += `${msg}\n`;
 		};
 
 		try {
@@ -114,12 +114,12 @@ spec:
 		const originalLog = console.log;
 		const originalDebug = console.debug;
 		let output = "";
-		let debugOutput = "";
+		let _debugOutput = "";
 		console.log = (msg: string) => {
-			output += msg + "\n";
+			output += `${msg}\n`;
 		};
 		console.debug = (msg: string) => {
-			debugOutput += msg + "\n";
+			_debugOutput += `${msg}\n`;
 		};
 
 		try {

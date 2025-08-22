@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { $ } from "bun";
-import { join } from "path";
+import { join } from "node:path";
 
 describe("kzdiff CLI", () => {
 	const CLI_PATH = join(process.cwd(), "src/cli.ts");
@@ -213,7 +213,7 @@ describe("kzdiff CLI", () => {
 
 	describe("Debug output", () => {
 		test("should show debug output when verbose flag is set", async () => {
-			const { stdout, stderr } = await runCLI([
+			const { stdout } = await runCLI([
 				EXAMPLE_PATH,
 				"-r",
 				TEST_COMMIT,

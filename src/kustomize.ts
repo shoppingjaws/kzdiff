@@ -1,8 +1,12 @@
 import { $ } from "bun";
-import { mkdtemp } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdtemp } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { createDebugLogger } from "./debug";
+
+interface ErrorWithStderr extends Error {
+	stderr?: string | Buffer;
+}
 
 interface BuildOptions {
 	ref?: string;
@@ -65,22 +69,25 @@ export async function kustomizeBuildToTmp(
 		);
 
 		return outputPath;
-	} catch (error: any) {
+	} catch (error) {
 		// Check if this is a remote build and the directory doesn't exist
-		if (buildOptions?.remote && error.stderr) {
-			const errorMessage = error.stderr.toString().toLowerCase();
-			const notFoundPatterns = ["does not exist", "no such file or directory"];
+		if (buildOptions?.remote && error instanceof Error && 'stderr' in error) {
+			const errorWithStderr = error as ErrorWithStderr;
+			if (errorWithStderr.stderr) {
+				const errorMessage = errorWithStderr.stderr.toString().toLowerCase();
+				const notFoundPatterns = ["does not exist", "no such file or directory"];
 
-			const isNotFound = notFoundPatterns.some((pattern) =>
-				errorMessage.includes(pattern),
-			);
-
-			if (isNotFound) {
-				debug(
-					`Remote directory not found, creating empty file at ${outputPath}`,
+				const isNotFound = notFoundPatterns.some((pattern) =>
+					errorMessage.includes(pattern),
 				);
-				await Bun.write(outputPath, "");
-				return outputPath;
+
+				if (isNotFound) {
+					debug(
+						`Remote directory not found, creating empty file at ${outputPath}`,
+					);
+					await Bun.write(outputPath, "");
+					return outputPath;
+				}
 			}
 		}
 

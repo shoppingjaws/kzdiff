@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { stat } from "fs/promises";
-import { join } from "path";
+import { stat } from "node:fs/promises";
+import { join } from "node:path";
 import { kustomizeBuildToTmp } from "./kustomize";
 import { $ } from "bun";
 

@@ -2,6 +2,20 @@ import { JSONPath } from "jsonpath-plus";
 import * as yaml from "js-yaml";
 import { createDebugLogger } from "./debug";
 
+interface K8sResource {
+	kind?: string;
+	metadata?: {
+		name?: string;
+		namespace?: string;
+		labels?: Record<string, string>;
+	};
+	spec?: {
+		replicas?: number;
+		[key: string]: unknown;
+	};
+	[key: string]: unknown;
+}
+
 const debug = createDebugLogger("filter");
 
 export async function filterYaml(
@@ -31,7 +45,7 @@ export async function filterYaml(
 		debug(`Converted filters to JSONPath: ${jsonPathFilters.join(", ")}`);
 
 		// Filter documents
-		const filteredDocuments: any[] = [];
+		const filteredDocuments: K8sResource[] = [];
 		for (const doc of documents) {
 			if (matchesAnyFilter(doc, jsonPathFilters)) {
 				filteredDocuments.push(doc);
@@ -66,9 +80,9 @@ function convertToJsonPath(filter: string): string {
 
 	// Parse simple filter expressions
 	const equalMatch = filter.match(/^(\w+)=(.+)$/);
-	if (equalMatch) {
+	if (equalMatch?.[2]) {
 		const [, key, value] = equalMatch;
-		const quotedValue = value.startsWith('"') ? value : `'${value}'`;
+		const quotedValue = value?.startsWith('"') ? value : `'${value}'`;
 
 		// Convert common shortcuts to JSONPath
 		switch (key) {
@@ -89,7 +103,7 @@ function convertToJsonPath(filter: string): string {
 	return filter;
 }
 
-function matchesAnyFilter(doc: any, jsonPathFilters: string[]): boolean {
+function matchesAnyFilter(doc: K8sResource, jsonPathFilters: string[]): boolean {
 	if (!doc || typeof doc !== "object") {
 		return false;
 	}
