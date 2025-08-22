@@ -47,8 +47,9 @@ export async function filterYaml(
 		// Filter documents
 		const filteredDocuments: K8sResource[] = [];
 		for (const doc of documents) {
-			if (matchesAnyFilter(doc, jsonPathFilters)) {
-				filteredDocuments.push(doc);
+			const resource = doc as K8sResource;
+			if (matchesAnyFilter(resource, jsonPathFilters)) {
+				filteredDocuments.push(resource);
 			}
 		}
 

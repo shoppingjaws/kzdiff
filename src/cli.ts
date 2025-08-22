@@ -82,8 +82,8 @@ Note: When using commit hashes, use the full 40-character SHA`;
 			args[i] === "-r" ||
 			args[i] === "--ref"
 		) {
-			if (i + 1 < args.length && args[i + 1]) {
-				remoteRef = args[i + 1];
+			if (i + 1 < args.length && args[i + 1] !== undefined) {
+				remoteRef = args[i + 1] ?? null;
 				i++; // Skip next argument
 			} else {
 				console.error(
@@ -92,8 +92,9 @@ Note: When using commit hashes, use the full 40-character SHA`;
 				process.exit(1);
 			}
 		} else if (args[i] === "-f" || args[i] === "--filter") {
-			if (i + 1 < args.length && args[i + 1]) {
-				filterOptions.push(args[i + 1]);
+			const nextArg = args[i + 1];
+			if (i + 1 < args.length && nextArg !== undefined) {
+				filterOptions.push(nextArg);
 				i++; // Skip next argument
 			} else {
 				console.error(`Error: ${args[i]} requires a filter expression`);

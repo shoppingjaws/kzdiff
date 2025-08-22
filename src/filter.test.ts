@@ -62,8 +62,8 @@ spec:
 			const docs = yaml.loadAll(filtered) as Array<{ kind: string }>;
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].kind).toBe("Deployment");
-			expect(docs[1].kind).toBe("Deployment");
+			expect(docs[0]?.kind).toBe("Deployment");
+			expect(docs[1]?.kind).toBe("Deployment");
 		});
 
 		test("should filter by metadata.name", async () => {
@@ -96,8 +96,8 @@ spec:
 			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].metadata.name).toBe("app-one");
-			expect(docs[1].metadata.name).toBe("app-one");
+			expect(docs[0]?.metadata?.name).toBe("app-one");
+			expect(docs[1]?.metadata?.name).toBe("app-one");
 		});
 
 		test("should filter by namespace", async () => {
@@ -133,8 +133,8 @@ spec:
 			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].metadata.namespace).toBe("production");
-			expect(docs[1].metadata.namespace).toBe("production");
+			expect(docs[0]?.metadata?.namespace).toBe("production");
+			expect(docs[1]?.metadata?.namespace).toBe("production");
 		});
 	});
 
@@ -205,8 +205,8 @@ spec:
 			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].spec.replicas).toBeGreaterThan(2);
-			expect(docs[1].spec.replicas).toBeGreaterThan(2);
+			expect(docs[0]?.spec?.replicas).toBeGreaterThan(2);
+			expect(docs[1]?.spec?.replicas).toBeGreaterThan(2);
 		});
 
 		test("should support complex JSONPath with labels", async () => {
@@ -247,8 +247,8 @@ spec:
 			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(2);
-			expect(docs[0].metadata.labels.team).toBe("platform");
-			expect(docs[1].metadata.labels.team).toBe("platform");
+			expect(docs[0]?.metadata?.labels?.team).toBe("platform");
+			expect(docs[1]?.metadata?.labels?.team).toBe("platform");
 		});
 	});
 
@@ -299,7 +299,7 @@ metadata:
 
 			// Content should be unchanged
 			expect(docs.length).toBe(1);
-			expect(docs[0].kind).toBe("Deployment");
+			expect(docs[0]?.kind).toBe("Deployment");
 		});
 	});
 
@@ -323,7 +323,7 @@ metadata:
 			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(1);
-			expect(docs[0].kind).toBe("Service");
+			expect(docs[0]?.kind).toBe("Service");
 		});
 
 		test("should handle values with spaces", async () => {
@@ -345,7 +345,7 @@ metadata:
 			const docs = yaml.loadAll(filtered) as K8sResource[];
 
 			expect(docs.length).toBe(1);
-			expect(docs[0].metadata.name).toBe("my app deployment");
+			expect(docs[0]?.metadata?.name).toBe("my app deployment");
 		});
 	});
 });

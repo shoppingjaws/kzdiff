@@ -92,8 +92,11 @@ export async function kustomizeBuildToTmp(
 		}
 
 		console.error(`[kustomizeBuildToTmp] Error: ${error}`);
-		if (error.stderr) {
-			console.error(`[kustomizeBuildToTmp] stderr: ${error.stderr}`);
+		if (error instanceof Error && 'stderr' in error) {
+			const errorWithStderr = error as ErrorWithStderr;
+			if (errorWithStderr.stderr) {
+				console.error(`[kustomizeBuildToTmp] stderr: ${errorWithStderr.stderr}`);
+			}
 		}
 		throw new Error(`Failed to run kustomize build: ${error}`);
 	}
