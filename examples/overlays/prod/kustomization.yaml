@@ -20,6 +20,9 @@ patches:
       name: example-app
     patch: |
       - op: replace
+        path: /spec/template/spec/containers/0/name
+        value: example-app
+      - op: replace
         path: /spec/template/spec/containers/0/image
         value: nginx:1.25-alpine
       - op: replace
