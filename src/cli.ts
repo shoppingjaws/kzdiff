@@ -19,15 +19,22 @@ async function main() {
 Options:
   -b, --branch <ref>       Remote branch or commit to compare against
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
-  -f, --filter <expr>      Filter resources (can be specified multiple times)
+  -f, --filter <expr>      Filter resources using JSONPath expressions (can be specified multiple times)
   -h, --help               Show this help message
   -v, --verbose            Enable verbose debug logging
   --version                Show version number
   --                       Pass remaining arguments to kustomize
 
-Filter expressions:
-  Simple:   kind=Deployment, name=example-app, namespace=prod
-  JSONPath: $[?(@.kind=='Service')], $[?(@.spec.replicas>2)]
+Filter expressions (JSONPath):
+  Simple shortcuts:
+    kind=Deployment        → $[?(@.kind=='Deployment')]
+    name=example-app       → $[?(@.metadata.name=='example-app')]
+    namespace=prod         → $[?(@.metadata.namespace=='prod')]
+  
+  Full JSONPath expressions:
+    $[?(@.kind=='Service')]
+    $[?(@.spec.replicas>2)]
+    $[?(@.metadata.labels.team=='platform')]
 
 Examples:
   ${progName} ./examples/overlays/prod

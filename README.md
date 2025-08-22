@@ -24,35 +24,68 @@ kzdiff ./overlays/production
 ### Compare with specific branch
 
 ```bash
-kzdiff -b develop ./overlays/production
+kzdiff ./overlays/production -b develop
 ```
 
-### Compare remote repository
+### Filter specific resources
 
 ```bash
-kzdiff -r https://github.com/kubernetes-sigs/kustomize.git /examples/springboot/base
+# Show only Deployments
+kzdiff ./overlays/production -f kind=Deployment
+
+# Show multiple resource types
+kzdiff ./overlays/production -f kind=Deployment -f kind=Service
+
+# Filter by name
+kzdiff ./overlays/production -f name=my-app
+
+# Filter by namespace
+kzdiff ./overlays/production -f namespace=production
+```
+
+### Advanced filtering with JSONPath
+
+```bash
+# Filter by replica count
+kzdiff ./overlays/production -f '$[?(@.spec.replicas>2)]'
+
+# Filter by labels
+kzdiff ./overlays/production -f '$[?(@.metadata.labels.team=="platform")]'
 ```
 
 ## Options
 
-- `-b, --base-branch <branch>` - Base branch to compare against (default: main)
-- `-r, --repository <url>` - Remote repository URL
+- `-b, --branch <ref>` - Remote branch or commit to compare against (default: auto-detect)
+- `-r, --ref <ref>` - Same as -b/--branch
+- `-f, --filter <expr>` - Filter resources (can be specified multiple times)
+- `-v, --verbose` - Enable verbose debug logging
 - `-h, --help` - Display help
+- `--version` - Show version number
+- `--` - Pass remaining arguments to kustomize
 
 ## Examples
 
 ```bash
-# Compare current directory with main branch
-kzdiff
-
-# Compare specific overlay
+# Compare with auto-detected default branch (main/master)
 kzdiff ./overlays/production
 
-# Compare with develop branch
-kzdiff -b develop ./overlays/staging
+# Compare with specific branch
+kzdiff ./overlays/production -b develop
 
-# Compare remote repository
-kzdiff -r https://github.com/your-org/your-repo.git /path/to/kustomization
+# Compare with specific commit
+kzdiff ./overlays/production -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
+
+# Filter to show only Deployments and Services
+kzdiff ./overlays/production -f kind=Deployment -f kind=Service
+
+# Complex filtering with JSONPath
+kzdiff ./overlays/production -f '$[?(@.spec.replicas>2)]' -b main
+
+# Pass options to kustomize
+kzdiff ./overlays/production -- --enable-helm
+
+# Combine multiple options
+kzdiff ./overlays/production -b staging -f kind=Deployment -- --enable-helm
 ```
 
 ## Development
@@ -86,6 +119,7 @@ kzdiff/
 │   ├── cli.ts          # CLI entry point
 │   ├── kustomize.ts    # Core Kustomize operations
 │   ├── diff.ts         # YAML diffing logic
+│   ├── filter.ts       # Resource filtering with JSONPath
 │   └── debug.ts        # Debug utilities
 ├── examples/           # Example Kustomize configurations
 └── tests/             # Test files
