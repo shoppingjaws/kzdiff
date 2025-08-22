@@ -71,11 +71,14 @@ export async function kustomizeBuildToTmp(
 		return outputPath;
 	} catch (error) {
 		// Check if this is a remote build and the directory doesn't exist
-		if (buildOptions?.remote && error instanceof Error && 'stderr' in error) {
+		if (buildOptions?.remote && error instanceof Error && "stderr" in error) {
 			const errorWithStderr = error as ErrorWithStderr;
 			if (errorWithStderr.stderr) {
 				const errorMessage = errorWithStderr.stderr.toString().toLowerCase();
-				const notFoundPatterns = ["does not exist", "no such file or directory"];
+				const notFoundPatterns = [
+					"does not exist",
+					"no such file or directory",
+				];
 
 				const isNotFound = notFoundPatterns.some((pattern) =>
 					errorMessage.includes(pattern),
@@ -92,10 +95,12 @@ export async function kustomizeBuildToTmp(
 		}
 
 		console.error(`[kustomizeBuildToTmp] Error: ${error}`);
-		if (error instanceof Error && 'stderr' in error) {
+		if (error instanceof Error && "stderr" in error) {
 			const errorWithStderr = error as ErrorWithStderr;
 			if (errorWithStderr.stderr) {
-				console.error(`[kustomizeBuildToTmp] stderr: ${errorWithStderr.stderr}`);
+				console.error(
+					`[kustomizeBuildToTmp] stderr: ${errorWithStderr.stderr}`,
+				);
 			}
 		}
 		throw new Error(`Failed to run kustomize build: ${error}`);

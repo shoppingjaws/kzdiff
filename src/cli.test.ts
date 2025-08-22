@@ -213,12 +213,7 @@ describe("kzdiff CLI", () => {
 
 	describe("Debug output", () => {
 		test("should show debug output when verbose flag is set", async () => {
-			const { stdout } = await runCLI([
-				EXAMPLE_PATH,
-				"-r",
-				TEST_COMMIT,
-				"-v",
-			]);
+			const { stdout } = await runCLI([EXAMPLE_PATH, "-r", TEST_COMMIT, "-v"]);
 
 			// Debug output should be in stdout
 			expect(stdout).toContain("[kzdiff-cli]");

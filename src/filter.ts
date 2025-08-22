@@ -104,7 +104,10 @@ function convertToJsonPath(filter: string): string {
 	return filter;
 }
 
-function matchesAnyFilter(doc: K8sResource, jsonPathFilters: string[]): boolean {
+function matchesAnyFilter(
+	doc: K8sResource,
+	jsonPathFilters: string[],
+): boolean {
 	if (!doc || typeof doc !== "object") {
 		return false;
 	}
