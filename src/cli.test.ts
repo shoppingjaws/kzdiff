@@ -68,6 +68,7 @@ describe("kzdiff CLI", () => {
 			);
 			// The commit has different content, so we expect to see diff output
 			expect(stdout).toContain("@@");
+
 			// Current version has additional team label that doesn't exist in test commit
 			expect(stdout).toContain("team: platform");
 		});

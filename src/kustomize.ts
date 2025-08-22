@@ -27,14 +27,19 @@ export async function kustomizeBuildToTmp(
 	try {
 		// If remote is specified, use Kustomize's native remote support
 		if (buildOptions?.remote) {
-			// Format: https://github.com/owner/repo//path/to/dir?ref=branch
+			// Format: https://github.com/owner/repo//path/to/dir?ref=branch&submodules=false
 			const cleanRemote = buildOptions.remote.replace(/\.git$/, "");
 			const cleanPath = kustomizePath.replace(/^\.?\//, "");
 			targetPath = `${cleanRemote}//${cleanPath}`;
 
+			// Add query parameters
+			const queryParams = [];
 			if (buildOptions.ref) {
-				targetPath += `?ref=${buildOptions.ref}`;
+				queryParams.push(`ref=${buildOptions.ref}`);
 			}
+			queryParams.push("submodules=false");
+
+			targetPath += `?${queryParams.join("&")}`;
 
 			debug(`Using remote URL: ${targetPath}`);
 		} else {
