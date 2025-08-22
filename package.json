@@ -40,8 +40,13 @@
 		"format": "biome format --write",
 		"lint": "biome lint --fix"
 	},
+	"dependencies": {
+		"jsonpath-plus": "^10.2.0",
+		"js-yaml": "^4.1.0"
+	},
 	"devDependencies": {
-		"@types/bun": "latest"
+		"@types/bun": "latest",
+		"@types/js-yaml": "^4.0.9"
 	},
 	"peerDependencies": {
 		"typescript": "^5"

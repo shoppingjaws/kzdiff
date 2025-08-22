@@ -33,6 +33,8 @@ describe("kzdiff CLI", () => {
 			expect(stdout).toContain("Options:");
 			expect(stdout).toContain("-b, --branch");
 			expect(stdout).toContain("-r, --ref");
+			expect(stdout).toContain("-f, --filter");
+			expect(stdout).toContain("Filter expressions:");
 		});
 
 		test("should show version when --version flag is used", async () => {
@@ -179,6 +181,13 @@ describe("kzdiff CLI", () => {
 			expect(stderr).toContain("Error: Unknown option: --unknown-option");
 			expect(stderr).toContain("Use -- to pass options to kustomize");
 		});
+
+		test("should fail when filter option missing value", async () => {
+			const { stderr, exitCode } = await runCLI([EXAMPLE_PATH, "-f"]);
+
+			expect(exitCode).toBe(1);
+			expect(stderr).toContain("Error: -f requires a filter expression");
+		});
 	});
 
 	describe("Output verification", () => {
@@ -252,6 +261,102 @@ describe("kzdiff CLI", () => {
 			]);
 
 			expect(exitCode).toBe(0);
+		});
+	});
+
+	describe("Filter functionality", () => {
+		test("should accept -f and --filter options", async () => {
+			const result1 = await runCLI([
+				EXAMPLE_PATH,
+				"-b",
+				"main",
+				"-f",
+				"kind=Deployment",
+				"-v",
+			]);
+			const result2 = await runCLI([
+				EXAMPLE_PATH,
+				"-b",
+				"main",
+				"--filter",
+				"kind=Service",
+				"-v",
+			]);
+
+			expect(result1.exitCode).toBe(0);
+			expect(result2.exitCode).toBe(0);
+			expect(result1.stdout).toContain("Applying filters to both builds");
+			expect(result2.stdout).toContain("Applying filters to both builds");
+		});
+
+		test("should accept multiple filter options", async () => {
+			const { stdout, exitCode } = await runCLI([
+				EXAMPLE_PATH,
+				"-b",
+				"main",
+				"-f",
+				"kind=Deployment",
+				"-f",
+				"kind=Service",
+				"-v",
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain("Filter options: kind=Deployment, kind=Service");
+			expect(stdout).toContain("Applying filters to both builds");
+		});
+
+		test("should work with JSONPath expressions", async () => {
+			const { stdout, exitCode } = await runCLI([
+				EXAMPLE_PATH,
+				"-b",
+				"main",
+				"-f",
+				"$[?(@.kind=='Deployment')]",
+				"-v",
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain("Applying filters to both builds");
+		});
+
+		test("should combine filters with other options", async () => {
+			const { stdout, exitCode } = await runCLI([
+				EXAMPLE_PATH,
+				"-r",
+				TEST_COMMIT,
+				"-f",
+				"kind=Deployment",
+				"-v",
+				"--",
+				"--enable-helm",
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain(`Building remote version (${TEST_COMMIT})`);
+			expect(stdout).toContain("Applying filters to both builds");
+		});
+
+		test("should show filtered content in diff", async () => {
+			// This test verifies that filtering is actually applied
+			// by checking that the diff output changes when filter is used
+			const { stdout: withoutFilter } = await runCLI([
+				EXAMPLE_PATH,
+				"-r",
+				TEST_COMMIT,
+			]);
+
+			const { stdout: withFilter } = await runCLI([
+				EXAMPLE_PATH,
+				"-r",
+				TEST_COMMIT,
+				"-f",
+				"kind=Deployment",
+			]);
+
+			// The filtered output should be different (likely shorter)
+			// as it only includes Deployments
+			expect(withFilter.length).toBeLessThan(withoutFilter.length);
 		});
 	});
 });

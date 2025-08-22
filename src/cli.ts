@@ -4,6 +4,7 @@ import { $ } from "bun";
 import { kustomizeBuildToTmp } from "./kustomize";
 import { createDebugLogger, setVerbose } from "./debug";
 import { showDiff } from "./diff";
+import { filterYaml } from "./filter";
 
 const debug = createDebugLogger("kzdiff-cli");
 
@@ -18,15 +19,22 @@ async function main() {
 Options:
   -b, --branch <ref>       Remote branch or commit to compare against
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
+  -f, --filter <expr>      Filter resources (can be specified multiple times)
   -h, --help               Show this help message
   -v, --verbose            Enable verbose debug logging
   --version                Show version number
   --                       Pass remaining arguments to kustomize
 
+Filter expressions:
+  Simple:   kind=Deployment, name=example-app, namespace=prod
+  JSONPath: $[?(@.kind=='Service')], $[?(@.spec.replicas>2)]
+
 Examples:
   ${progName} ./examples/overlays/prod
   ${progName} ./examples/overlays/prod -b develop
   ${progName} ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
+  ${progName} ./examples/overlays/prod -f kind=Deployment
+  ${progName} ./examples/overlays/prod -f kind=Deployment -f kind=Service
   ${progName} ./examples/overlays/prod -- --enable-helm
   ${progName} ./examples/overlays/prod -b staging -- --enable-helm
 
@@ -56,6 +64,7 @@ Note: When using commit hashes, use the full 40-character SHA`;
 	let remoteRef: string | null = null;
 	let kustomizeOptions: string[] = [];
 	let verbose = false;
+	const filterOptions: string[] = [];
 
 	// Parse arguments
 	for (let i = 1; i < args.length; i++) {
@@ -72,6 +81,14 @@ Note: When using commit hashes, use the full 40-character SHA`;
 				console.error(
 					`Error: ${args[i]} requires a branch name or commit hash`,
 				);
+				process.exit(1);
+			}
+		} else if (args[i] === "-f" || args[i] === "--filter") {
+			if (i + 1 < args.length) {
+				filterOptions.push(args[i + 1]);
+				i++; // Skip next argument
+			} else {
+				console.error(`Error: ${args[i]} requires a filter expression`);
 				process.exit(1);
 			}
 		} else if (args[i] === "-v" || args[i] === "--verbose") {
@@ -95,6 +112,9 @@ Note: When using commit hashes, use the full 40-character SHA`;
 	debug(`Processing path: ${kustomizePath}`);
 	if (kustomizeOptions.length > 0) {
 		debug(`Kustomize options: ${kustomizeOptions.join(" ")}`);
+	}
+	if (filterOptions.length > 0) {
+		debug(`Filter options: ${filterOptions.join(", ")}`);
 	}
 
 	try {
@@ -167,6 +187,14 @@ Note: When using commit hashes, use the full 40-character SHA`;
 			{ ref: remoteRef, remote },
 		);
 		debug(`Remote build saved to: ${remotePath}`);
+
+		// Apply filters if specified
+		if (filterOptions.length > 0) {
+			debug("Applying filters to both builds...");
+			await filterYaml(localPath, filterOptions);
+			await filterYaml(remotePath, filterOptions);
+			debug("Filters applied successfully");
+		}
 
 		// Show diff
 		debug(`\nShowing diff between ${remoteRef} and local changes:`);
