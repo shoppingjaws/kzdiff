@@ -1,5 +1,5 @@
-import { describe, it, expect } from "bun:test";
-import { jsonDiff } from "./json-diff";
+import { describe, it, expect } from "bun:test"
+import { jsonDiff } from "./json-diff"
 
 describe("jsonDiff", () => {
 	it("should detect no changes for identical YAML", () => {
@@ -9,26 +9,26 @@ kind: Deployment
 metadata:
   name: test-app
 spec:
-  replicas: 3`;
+  replicas: 3`
 
-		const result = jsonDiff(yaml, yaml);
-		expect(result).toContain("No differences found");
-	});
+		const result = jsonDiff(yaml, yaml)
+		expect(result).toContain("No differences found")
+	})
 
 	it("should detect added resource", () => {
-		const oldYaml = "";
+		const oldYaml = ""
 		const newYaml = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-app
 spec:
-  replicas: 3`;
+  replicas: 3`
 
-		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("Deployment (ADDED)");
-		expect(result).toContain("test-app");
-	});
+		const result = jsonDiff(oldYaml, newYaml)
+		expect(result).toContain("Deployment (ADDED)")
+		expect(result).toContain("test-app")
+	})
 
 	it("should detect removed resource", () => {
 		const oldYaml = `
@@ -37,13 +37,13 @@ kind: Deployment
 metadata:
   name: test-app
 spec:
-  replicas: 3`;
-		const newYaml = "";
+  replicas: 3`
+		const newYaml = ""
 
-		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("Deployment (REMOVED)");
-		expect(result).toContain("test-app");
-	});
+		const result = jsonDiff(oldYaml, newYaml)
+		expect(result).toContain("Deployment (REMOVED)")
+		expect(result).toContain("test-app")
+	})
 
 	it("should detect modified field", () => {
 		const oldYaml = `
@@ -52,7 +52,7 @@ kind: Deployment
 metadata:
   name: test-app
 spec:
-  replicas: 3`;
+  replicas: 3`
 
 		const newYaml = `
 apiVersion: apps/v1
@@ -60,13 +60,13 @@ kind: Deployment
 metadata:
   name: test-app
 spec:
-  replicas: 5`;
+  replicas: 5`
 
-		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("replicas:");
-		expect(result).toContain("3");
-		expect(result).toContain("5");
-	});
+		const result = jsonDiff(oldYaml, newYaml)
+		expect(result).toContain("replicas:")
+		expect(result).toContain("3")
+		expect(result).toContain("5")
+	})
 
 	it("should handle multiple resources", () => {
 		const oldYaml = `
@@ -82,7 +82,7 @@ kind: Service
 metadata:
   name: app1-svc
 spec:
-  type: ClusterIP`;
+  type: ClusterIP`
 
 		const newYaml = `
 apiVersion: apps/v1
@@ -97,16 +97,16 @@ kind: Service
 metadata:
   name: app1-svc
 spec:
-  type: NodePort`;
+  type: NodePort`
 
-		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("Deployment");
-		expect(result).toContain("Service");
-		expect(result).toContain("replicas:");
-		expect(result).toContain("type:");
-		expect(result).toContain("ClusterIP");
-		expect(result).toContain("NodePort");
-	});
+		const result = jsonDiff(oldYaml, newYaml)
+		expect(result).toContain("Deployment")
+		expect(result).toContain("Service")
+		expect(result).toContain("replicas:")
+		expect(result).toContain("type:")
+		expect(result).toContain("ClusterIP")
+		expect(result).toContain("NodePort")
+	})
 
 	it("should handle resources with namespace", () => {
 		const oldYaml = `
@@ -116,7 +116,7 @@ metadata:
   name: test-app
   namespace: production
 spec:
-  replicas: 3`;
+  replicas: 3`
 
 		const newYaml = `
 apiVersion: apps/v1
@@ -125,13 +125,13 @@ metadata:
   name: test-app
   namespace: production
 spec:
-  replicas: 5`;
+  replicas: 5`
 
-		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("namespace:");
-		expect(result).toContain("production");
-		expect(result).toContain("test-app");
-	});
+		const result = jsonDiff(oldYaml, newYaml)
+		expect(result).toContain("namespace:")
+		expect(result).toContain("production")
+		expect(result).toContain("test-app")
+	})
 
 	it("should show context lines", () => {
 		const oldYaml = `
@@ -144,7 +144,7 @@ metadata:
     version: v1
     environment: dev
 spec:
-  replicas: 3`;
+  replicas: 3`
 
 		const newYaml = `
 apiVersion: apps/v1
@@ -156,14 +156,14 @@ metadata:
     version: v2
     environment: dev
 spec:
-  replicas: 3`;
+  replicas: 3`
 
-		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("version:");
+		const result = jsonDiff(oldYaml, newYaml)
+		expect(result).toContain("version:")
 		// Should contain context lines (before/after the changed line)
-		expect(result).toContain("app: test");
-		expect(result).toContain("environment: dev");
-	});
+		expect(result).toContain("app: test")
+		expect(result).toContain("environment: dev")
+	})
 
 	it("should handle arrays", () => {
 		const oldYaml = `
@@ -176,7 +176,7 @@ spec:
     - name: app
       image: nginx:1.19
       ports:
-        - containerPort: 80`;
+        - containerPort: 80`
 
 		const newYaml = `
 apiVersion: apps/v1
@@ -188,16 +188,16 @@ spec:
     - name: app
       image: nginx:1.20
       ports:
-        - containerPort: 8080`;
+        - containerPort: 8080`
 
-		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("image:");
-		expect(result).toContain("nginx:1.19");
-		expect(result).toContain("nginx:1.20");
-		expect(result).toContain("containerPort:");
-		expect(result).toContain("80");
-		expect(result).toContain("8080");
-	});
+		const result = jsonDiff(oldYaml, newYaml)
+		expect(result).toContain("image:")
+		expect(result).toContain("nginx:1.19")
+		expect(result).toContain("nginx:1.20")
+		expect(result).toContain("containerPort:")
+		expect(result).toContain("80")
+		expect(result).toContain("8080")
+	})
 
 	it("should handle multiline strings", () => {
 		const oldYaml = `
@@ -209,7 +209,7 @@ data:
   config.yaml: |
     server:
       port: 8080
-      host: localhost`;
+      host: localhost`
 
 		const newYaml = `
 apiVersion: v1
@@ -220,11 +220,11 @@ data:
   config.yaml: |
     server:
       port: 9090
-      host: 0.0.0.0`;
+      host: 0.0.0.0`
 
-		const result = jsonDiff(oldYaml, newYaml);
-		expect(result).toContain("yaml:");
-		expect(result).toContain("8080");
-		expect(result).toContain("9090");
-	});
-});
+		const result = jsonDiff(oldYaml, newYaml)
+		expect(result).toContain("yaml:")
+		expect(result).toContain("8080")
+		expect(result).toContain("9090")
+	})
+})

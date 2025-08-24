@@ -32,9 +32,3 @@ jobs:
 
     - name: Run tests
       run: bun test
-
-    - name: Run CLI tests
-      run: bun test:cli
-
-    - name: Run unit tests
-      run: bun test:unit

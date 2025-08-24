@@ -1,58 +1,52 @@
-import { $ } from "bun";
-import { createDebugLogger } from "./debug";
+import { $ } from "bun"
+import { createDebugLogger } from "./debug"
 
-const debug = createDebugLogger("diff");
+const debug = createDebugLogger("diff")
 
 export interface DiffOptions {
-	color?: boolean;
-	context?: number;
+	color?: boolean
+	context?: number
 }
 
-export async function showDiff(
-	file1: string,
-	file2: string,
-	options: DiffOptions = {},
-): Promise<void> {
-	const { color = true, context = 3 } = options;
+export async function showDiff(file1: string, file2: string, options: DiffOptions = {}): Promise<void> {
+	const { color = true, context = 3 } = options
 
-	debug(`Comparing ${file1} vs ${file2} using diff`);
+	debug(`Comparing ${file1} vs ${file2} using diff`)
 
 	try {
-		const args = ["diff", `-u${context}`];
+		const args = ["diff", `-u${context}`]
 		if (color) {
-			args.push("--color=always");
+			args.push("--color=always")
 		}
-		args.push(file1, file2);
+		args.push(file1, file2)
 
-		const result = await $`${args}`.quiet().nothrow();
+		const result = await $`${args}`.quiet().nothrow()
 
 		if (result.exitCode === 0) {
-			console.log("No differences found.");
+			console.log("No differences found.")
 		} else if (result.exitCode === 1) {
 			// diff returns 1 when files differ, which is expected
-			console.log(result.stdout.toString());
+			console.log(result.stdout.toString())
 		} else {
 			// Try without color if --color is not supported
 			if (color) {
-				debug("Retrying without color option");
-				const fallbackResult = await $`diff -u${context} ${file1} ${file2}`
-					.quiet()
-					.nothrow();
+				debug("Retrying without color option")
+				const fallbackResult = await $`diff -u${context} ${file1} ${file2}`.quiet().nothrow()
 				if (fallbackResult.exitCode === 1) {
-					console.log(fallbackResult.stdout.toString());
+					console.log(fallbackResult.stdout.toString())
 				} else {
-					throw new Error(`diff failed: ${result.stderr.toString()}`);
+					throw new Error(`diff failed: ${result.stderr.toString()}`)
 				}
 			} else {
-				throw new Error(`diff failed: ${result.stderr.toString()}`);
+				throw new Error(`diff failed: ${result.stderr.toString()}`)
 			}
 		}
 	} catch (error) {
-		console.error("Failed to run diff:", error);
+		console.error("Failed to run diff:", error)
 		// Fallback: show file contents
-		console.log("\n--- File 1 ---");
-		console.log(await Bun.file(file1).text());
-		console.log("\n--- File 2 ---");
-		console.log(await Bun.file(file2).text());
+		console.log("\n--- File 1 ---")
+		console.log(await Bun.file(file1).text())
+		console.log("\n--- File 2 ---")
+		console.log(await Bun.file(file2).text())
 	}
 }

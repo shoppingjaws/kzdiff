@@ -1,35 +1,35 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { filterYaml } from "./filter";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import * as yaml from "js-yaml";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test"
+import { filterYaml } from "./filter"
+import { mkdtemp, rm } from "node:fs/promises"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
+import * as yaml from "js-yaml"
 
 interface K8sResource {
-	kind?: string;
+	kind?: string
 	metadata?: {
-		name?: string;
-		namespace?: string;
-		labels?: Record<string, string>;
-	};
+		name?: string
+		namespace?: string
+		labels?: Record<string, string>
+	}
 	spec?: {
-		replicas?: number;
-		[key: string]: unknown;
-	};
+		replicas?: number
+		[key: string]: unknown
+	}
 }
 
 describe("filterYaml", () => {
-	let tempDir: string;
-	let testFile: string;
+	let tempDir: string
+	let testFile: string
 
 	beforeEach(async () => {
-		tempDir = await mkdtemp(join(tmpdir(), "filter-test-"));
-		testFile = join(tempDir, "test.yaml");
-	});
+		tempDir = await mkdtemp(join(tmpdir(), "filter-test-"))
+		testFile = join(tempDir, "test.yaml")
+	})
 
 	afterEach(async () => {
-		await rm(tempDir, { recursive: true, force: true });
-	});
+		await rm(tempDir, { recursive: true, force: true })
+	})
 
 	describe("Basic filtering", () => {
 		test("should filter by kind", async () => {
@@ -54,17 +54,17 @@ metadata:
   name: another-deployment
 spec:
   replicas: 3
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ["kind=Deployment"]);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ["kind=Deployment"])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as Array<{ kind: string }>;
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as Array<{ kind: string }>
 
-			expect(docs.length).toBe(2);
-			expect(docs[0]?.kind).toBe("Deployment");
-			expect(docs[1]?.kind).toBe("Deployment");
-		});
+			expect(docs.length).toBe(2)
+			expect(docs[0]?.kind).toBe("Deployment")
+			expect(docs[1]?.kind).toBe("Deployment")
+		})
 
 		test("should filter by metadata.name", async () => {
 			const content = `
@@ -88,17 +88,17 @@ metadata:
   name: app-one
 spec:
   type: ClusterIP
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ["name=app-one"]);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ["name=app-one"])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as K8sResource[];
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as K8sResource[]
 
-			expect(docs.length).toBe(2);
-			expect(docs[0]?.metadata?.name).toBe("app-one");
-			expect(docs[1]?.metadata?.name).toBe("app-one");
-		});
+			expect(docs.length).toBe(2)
+			expect(docs[0]?.metadata?.name).toBe("app-one")
+			expect(docs[1]?.metadata?.name).toBe("app-one")
+		})
 
 		test("should filter by namespace", async () => {
 			const content = `
@@ -125,18 +125,18 @@ metadata:
   namespace: production
 spec:
   replicas: 3
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ["namespace=production"]);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ["namespace=production"])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as K8sResource[];
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as K8sResource[]
 
-			expect(docs.length).toBe(2);
-			expect(docs[0]?.metadata?.namespace).toBe("production");
-			expect(docs[1]?.metadata?.namespace).toBe("production");
-		});
-	});
+			expect(docs.length).toBe(2)
+			expect(docs[0]?.metadata?.namespace).toBe("production")
+			expect(docs[1]?.metadata?.namespace).toBe("production")
+		})
+	})
 
 	describe("Multiple filters", () => {
 		test("should apply multiple filters (OR logic)", async () => {
@@ -161,18 +161,18 @@ metadata:
   name: test-config
 data:
   key: value
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ["kind=Deployment", "kind=Service"]);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ["kind=Deployment", "kind=Service"])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as K8sResource[];
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as K8sResource[]
 
-			expect(docs.length).toBe(2);
-			const kinds = docs.map((d) => d.kind).sort();
-			expect(kinds).toEqual(["Deployment", "Service"]);
-		});
-	});
+			expect(docs.length).toBe(2)
+			const kinds = docs.map((d) => d.kind).sort()
+			expect(kinds).toEqual(["Deployment", "Service"])
+		})
+	})
 
 	describe("JSONPath expressions", () => {
 		test("should support JSONPath expressions", async () => {
@@ -197,17 +197,17 @@ metadata:
   name: medium-deployment
 spec:
   replicas: 3
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ["$[?(@.spec.replicas>2)]"]);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ["$[?(@.spec.replicas>2)]"])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as K8sResource[];
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as K8sResource[]
 
-			expect(docs.length).toBe(2);
-			expect(docs[0]?.spec?.replicas).toBeGreaterThan(2);
-			expect(docs[1]?.spec?.replicas).toBeGreaterThan(2);
-		});
+			expect(docs.length).toBe(2)
+			expect(docs[0]?.spec?.replicas).toBeGreaterThan(2)
+			expect(docs[1]?.spec?.replicas).toBeGreaterThan(2)
+		})
 
 		test("should support complex JSONPath with labels", async () => {
 			const content = `
@@ -239,27 +239,27 @@ metadata:
     team: platform
 spec:
   type: ClusterIP
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ["$[?(@.metadata.labels.team=='platform')]"]);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ["$[?(@.metadata.labels.team=='platform')]"])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as K8sResource[];
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as K8sResource[]
 
-			expect(docs.length).toBe(2);
-			expect(docs[0]?.metadata?.labels?.team).toBe("platform");
-			expect(docs[1]?.metadata?.labels?.team).toBe("platform");
-		});
-	});
+			expect(docs.length).toBe(2)
+			expect(docs[0]?.metadata?.labels?.team).toBe("platform")
+			expect(docs[1]?.metadata?.labels?.team).toBe("platform")
+		})
+	})
 
 	describe("Edge cases", () => {
 		test("should handle empty file", async () => {
-			await Bun.write(testFile, "");
-			await filterYaml(testFile, ["kind=Deployment"]);
+			await Bun.write(testFile, "")
+			await filterYaml(testFile, ["kind=Deployment"])
 
-			const filtered = await Bun.file(testFile).text();
-			expect(filtered).toBe("");
-		});
+			const filtered = await Bun.file(testFile).text()
+			expect(filtered).toBe("")
+		})
 
 		test("should handle file with no matches", async () => {
 			const content = `
@@ -269,20 +269,20 @@ metadata:
   name: test-service
 spec:
   type: ClusterIP
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ["kind=Deployment"]);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ["kind=Deployment"])
 
-			const filtered = await Bun.file(testFile).text();
-			expect(filtered).toBe("");
-		});
+			const filtered = await Bun.file(testFile).text()
+			expect(filtered).toBe("")
+		})
 
 		test("should handle invalid YAML gracefully", async () => {
-			await Bun.write(testFile, "invalid: yaml: content:");
+			await Bun.write(testFile, "invalid: yaml: content:")
 
 			// Should throw error for invalid YAML
-			await expect(filterYaml(testFile, ["kind=Deployment"])).rejects.toThrow();
-		});
+			await expect(filterYaml(testFile, ["kind=Deployment"])).rejects.toThrow()
+		})
 
 		test("should return immediately with no filters", async () => {
 			const content = `
@@ -290,18 +290,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-deployment
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, []);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, [])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as K8sResource[];
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as K8sResource[]
 
 			// Content should be unchanged
-			expect(docs.length).toBe(1);
-			expect(docs[0]?.kind).toBe("Deployment");
-		});
-	});
+			expect(docs.length).toBe(1)
+			expect(docs[0]?.kind).toBe("Deployment")
+		})
+	})
 
 	describe("Simple filter syntax", () => {
 		test("should parse kind= syntax", async () => {
@@ -315,16 +315,16 @@ apiVersion: v1
 kind: Service
 metadata:
   name: test
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ["kind=Service"]);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ["kind=Service"])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as K8sResource[];
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as K8sResource[]
 
-			expect(docs.length).toBe(1);
-			expect(docs[0]?.kind).toBe("Service");
-		});
+			expect(docs.length).toBe(1)
+			expect(docs[0]?.kind).toBe("Service")
+		})
 
 		test("should handle values with spaces", async () => {
 			const content = `
@@ -337,15 +337,15 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-deployment
-`;
-			await Bun.write(testFile, content);
-			await filterYaml(testFile, ['name="my app deployment"']);
+`
+			await Bun.write(testFile, content)
+			await filterYaml(testFile, ['name="my app deployment"'])
 
-			const filtered = await Bun.file(testFile).text();
-			const docs = yaml.loadAll(filtered) as K8sResource[];
+			const filtered = await Bun.file(testFile).text()
+			const docs = yaml.loadAll(filtered) as K8sResource[]
 
-			expect(docs.length).toBe(1);
-			expect(docs[0]?.metadata?.name).toBe("my app deployment");
-		});
-	});
-});
+			expect(docs.length).toBe(1)
+			expect(docs[0]?.metadata?.name).toBe("my app deployment")
+		})
+	})
+})

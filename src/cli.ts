@@ -1,20 +1,20 @@
 #!/usr/bin/env bun
 
-import { $ } from "bun";
-import { kustomizeBuildToTmp } from "./kustomize";
-import { createDebugLogger, setVerbose } from "./debug";
-import { filterYaml } from "./filter";
-import { jsonDiff } from "./json-diff";
-import { readFile } from "node:fs/promises";
+import { $ } from "bun"
+import { kustomizeBuildToTmp } from "./kustomize"
+import { createDebugLogger, setVerbose } from "./debug"
+import { filterYaml } from "./filter"
+import { jsonDiff } from "./json-diff"
+import { readFile } from "node:fs/promises"
 
-const debug = createDebugLogger("kzdiff-cli");
+const debug = createDebugLogger("kzdiff-cli")
 
 async function main() {
-	const args = process.argv.slice(2);
+	const args = process.argv.slice(2)
 
 	// Show help function
 	const showHelp = (exitCode: number = 0) => {
-		const progName = "kzdiff";
+		const progName = "kzdiff"
 		const helpText = `Usage: ${progName} <kustomize-path> [options...]
 
 Options:
@@ -46,121 +46,108 @@ Examples:
   ${progName} ./examples/overlays/prod -- --enable-helm
   ${progName} ./examples/overlays/prod -b staging -- --enable-helm
 
-Note: When using commit hashes, use the full 40-character SHA`;
+Note: When using commit hashes, use the full 40-character SHA`
 
-		console.log(helpText);
-		process.exit(exitCode);
-	};
+		console.log(helpText)
+		process.exit(exitCode)
+	}
 
 	// Check for version flag
 	if (args.includes("--version")) {
-		const { version } = await import("../package.json");
-		console.log(version);
-		process.exit(0);
+		const { version } = await import("../package.json")
+		console.log(version)
+		process.exit(0)
 	}
 
 	// Check for help flag
 	if (args.includes("-h") || args.includes("--help")) {
-		showHelp(0);
+		showHelp(0)
 	}
 
 	if (args.length === 0) {
-		showHelp(1);
+		showHelp(1)
 	}
 
-	const kustomizePath = args[0] as string; // We know args[0] exists after the length check
-	let remoteRef: string | null = null;
-	let kustomizeOptions: string[] = [];
-	let verbose = false;
-	const filterOptions: string[] = [];
+	const kustomizePath = args[0] as string // We know args[0] exists after the length check
+	let remoteRef: string | null = null
+	let kustomizeOptions: string[] = []
+	let verbose = false
+	const filterOptions: string[] = []
 
 	// Parse arguments
 	for (let i = 1; i < args.length; i++) {
-		if (
-			args[i] === "-b" ||
-			args[i] === "--branch" ||
-			args[i] === "-r" ||
-			args[i] === "--ref"
-		) {
+		if (args[i] === "-b" || args[i] === "--branch" || args[i] === "-r" || args[i] === "--ref") {
 			if (i + 1 < args.length && args[i + 1] !== undefined) {
-				remoteRef = args[i + 1] ?? null;
-				i++; // Skip next argument
+				remoteRef = args[i + 1] ?? null
+				i++ // Skip next argument
 			} else {
-				console.error(
-					`Error: ${args[i]} requires a branch name or commit hash`,
-				);
-				process.exit(1);
+				console.error(`Error: ${args[i]} requires a branch name or commit hash`)
+				process.exit(1)
 			}
 		} else if (args[i] === "-f" || args[i] === "--filter") {
-			const nextArg = args[i + 1];
+			const nextArg = args[i + 1]
 			if (i + 1 < args.length && nextArg !== undefined) {
-				filterOptions.push(nextArg);
-				i++; // Skip next argument
+				filterOptions.push(nextArg)
+				i++ // Skip next argument
 			} else {
-				console.error(`Error: ${args[i]} requires a filter expression`);
-				process.exit(1);
+				console.error(`Error: ${args[i]} requires a filter expression`)
+				process.exit(1)
 			}
 		} else if (args[i] === "-v" || args[i] === "--verbose") {
-			verbose = true;
+			verbose = true
 		} else if (args[i] === "--") {
 			// Everything after -- goes to kustomize
-			kustomizeOptions = args.slice(i + 1);
-			break;
+			kustomizeOptions = args.slice(i + 1)
+			break
 		} else {
-			console.error(`Error: Unknown option: ${args[i]}`);
-			console.error("Use -- to pass options to kustomize");
-			process.exit(1);
+			console.error(`Error: Unknown option: ${args[i]}`)
+			console.error("Use -- to pass options to kustomize")
+			process.exit(1)
 		}
 	}
 
 	// Enable verbose mode if requested
 	if (verbose) {
-		setVerbose(true);
+		setVerbose(true)
 	}
 
-	debug(`Processing path: ${kustomizePath}`);
+	debug(`Processing path: ${kustomizePath}`)
 	if (kustomizeOptions.length > 0) {
-		debug(`Kustomize options: ${kustomizeOptions.join(" ")}`);
+		debug(`Kustomize options: ${kustomizeOptions.join(" ")}`)
 	}
 	if (filterOptions.length > 0) {
-		debug(`Filter options: ${filterOptions.join(", ")}`);
+		debug(`Filter options: ${filterOptions.join(", ")}`)
 	}
 
 	try {
 		// Get current git remote and branch
-		const remoteUrl = await $`git config --get remote.origin.url`.text();
-		const remote = remoteUrl.trim();
-		const currentBranch = await $`git rev-parse --abbrev-ref HEAD`.text();
-		const branch = currentBranch.trim();
+		const remoteUrl = await $`git config --get remote.origin.url`.text()
+		const remote = remoteUrl.trim()
+		const currentBranch = await $`git rev-parse --abbrev-ref HEAD`.text()
+		const branch = currentBranch.trim()
 
-		debug(`Remote: ${remote}`);
-		debug(`Current branch: ${branch}`);
+		debug(`Remote: ${remote}`)
+		debug(`Current branch: ${branch}`)
 
 		// If no remote ref specified, get the default branch
 		if (!remoteRef) {
-			debug("No remote ref specified, detecting default branch...");
+			debug("No remote ref specified, detecting default branch...")
 			try {
 				// Try to get the default branch from remote
-				const defaultBranchResult =
-					await $`git symbolic-ref refs/remotes/origin/HEAD`.text();
-				remoteRef = defaultBranchResult
-					.trim()
-					.replace("refs/remotes/origin/", "");
-				debug(`Detected default branch: ${remoteRef}`);
+				const defaultBranchResult = await $`git symbolic-ref refs/remotes/origin/HEAD`.text()
+				remoteRef = defaultBranchResult.trim().replace("refs/remotes/origin/", "")
+				debug(`Detected default branch: ${remoteRef}`)
 			} catch {
 				// Fallback: try common default branches
-				debug(
-					"Could not detect default branch from remote, trying common defaults...",
-				);
-				const commonDefaults = ["main", "master"];
+				debug("Could not detect default branch from remote, trying common defaults...")
+				const commonDefaults = ["main", "master"]
 				for (const defaultBranch of commonDefaults) {
 					try {
-						const checkResult =
-							await $`git ls-remote --heads origin ${defaultBranch}`.text();
+						const checkResult = await $`git ls-remote --heads origin ${defaultBranch}`.text()
 						if (checkResult.trim()) {
-							remoteRef = defaultBranch;
-							debug(`Found default branch: ${remoteRef}`);
-							break;
+							remoteRef = defaultBranch
+							debug(`Found default branch: ${remoteRef}`)
+							break
 						}
 					} catch {
 						// Continue to next
@@ -168,57 +155,49 @@ Note: When using commit hashes, use the full 40-character SHA`;
 				}
 
 				if (!remoteRef) {
-					console.error(
-						"Could not determine default remote branch. Please specify with -b or -r option.",
-					);
-					process.exit(1);
+					console.error("Could not determine default remote branch. Please specify with -b or -r option.")
+					process.exit(1)
 				}
 			}
 		}
 
-		debug(`Using remote ref: ${remoteRef}`);
+		debug(`Using remote ref: ${remoteRef}`)
 
 		// Build local version
-		debug("Building local version...");
-		const localPath = await kustomizeBuildToTmp(
-			kustomizePath,
-			"after.yaml",
-			kustomizeOptions,
-		);
-		debug(`Local build saved to: ${localPath}`);
+		debug("Building local version...")
+		const localPath = await kustomizeBuildToTmp(kustomizePath, "after.yaml", kustomizeOptions)
+		debug(`Local build saved to: ${localPath}`)
 
 		// Build remote version (from specified ref)
-		debug(`Building remote version (${remoteRef})...`);
-		const remotePath = await kustomizeBuildToTmp(
-			kustomizePath,
-			"before.yaml",
-			kustomizeOptions,
-			{ ref: remoteRef, remote },
-		);
-		debug(`Remote build saved to: ${remotePath}`);
+		debug(`Building remote version (${remoteRef})...`)
+		const remotePath = await kustomizeBuildToTmp(kustomizePath, "before.yaml", kustomizeOptions, {
+			ref: remoteRef,
+			remote,
+		})
+		debug(`Remote build saved to: ${remotePath}`)
 
 		// Apply filters if specified
 		if (filterOptions.length > 0) {
-			debug("Applying filters to both builds...");
-			await filterYaml(localPath, filterOptions);
-			await filterYaml(remotePath, filterOptions);
-			debug("Filters applied successfully");
+			debug("Applying filters to both builds...")
+			await filterYaml(localPath, filterOptions)
+			await filterYaml(remotePath, filterOptions)
+			debug("Filters applied successfully")
 		}
 
 		// Show diff
-		debug(`\nShowing diff between ${remoteRef} and local changes:`);
-		debug("=".repeat(80));
+		debug(`\nShowing diff between ${remoteRef} and local changes:`)
+		debug("=".repeat(80))
 
 		// Use JSON-based diff for better structured output
-		const oldContent = await readFile(remotePath, "utf-8");
-		const newContent = await readFile(localPath, "utf-8");
-		const diffOutput = jsonDiff(oldContent, newContent);
-		console.log(diffOutput);
+		const oldContent = await readFile(remotePath, "utf-8")
+		const newContent = await readFile(localPath, "utf-8")
+		const diffOutput = jsonDiff(oldContent, newContent)
+		console.log(diffOutput)
 	} catch (error) {
-		console.error("Error:", error);
-		process.exit(1);
+		console.error("Error:", error)
+		process.exit(1)
 	}
 }
 
 // Run the CLI
-main();
+main()

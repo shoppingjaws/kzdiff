@@ -29,8 +29,7 @@
 		"LICENSE",
 		"README.md",
 		"package.json",
-		"tsconfig.json",
-		"examples/"
+		"tsconfig.json"
 	],
 	"scripts": {
 		"test": "bun test",

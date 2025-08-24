@@ -1,0 +1,41 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.1.3/schema.json",
+	"files": {
+		"includes": [
+			"**",
+			"!**/node_modules/**",
+			"!**/dist/**",
+			"!**/coverage/**",
+			"!**/*.tgz",
+			"!**/kzdiff",
+			"!**/kzdiff-standalone",
+			"!**/test-repo/**",
+			"!**/tmp/**"
+		]
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"style": {
+				"noNonNullAssertion": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 120
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"semicolons": "asNeeded",
+			"trailingCommas": "all"
+		}
+	}
+}

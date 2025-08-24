@@ -1,13 +1,13 @@
-let verboseEnabled = false;
+let verboseEnabled = false
 
 export function setVerbose(enabled: boolean) {
-	verboseEnabled = enabled;
+	verboseEnabled = enabled
 }
 
 export function createDebugLogger(functionName: string) {
 	return (message: string) => {
 		if (verboseEnabled) {
-			console.debug(`[${functionName}] ${message}`);
+			console.debug(`[${functionName}] ${message}`)
 		}
-	};
+	}
 }

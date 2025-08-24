@@ -15,6 +15,7 @@ dist/
 test-repo/
 tmp/
 bun.lockb
+bun.lock
 .bun/
 
 # CI/CD
