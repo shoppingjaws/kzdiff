@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommitsDisabled"
+  ],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["after 10pm and before 5am every weekday", "every weekend"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["*"],
+      "rangeStrategy": "bump"
+    },
+    {
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies",
+      "groupSlug": "npm"
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "devDependencies",
+      "automerge": true
+    },
+    {
+      "matchPackageNames": ["@biomejs/biome"],
+      "groupName": "biome",
+      "automerge": true
+    },
+    {
+      "matchPackageNames": ["bun-types", "@types/bun"],
+      "groupName": "bun types",
+      "automerge": true
+    }
+  ],
+  "prConcurrentLimit": 3,
+  "prCreation": "immediate",
+  "automerge": false,
+  "automergeType": "pr",
+  "platformAutomerge": true,
+  "ignoreTests": false,
+  "postUpdateOptions": ["bunInstall"],
+  "bun": {
+    "enabled": true
+  }
+}
