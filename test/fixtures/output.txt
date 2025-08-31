@@ -1,0 +1,128 @@
+
+(root level)  (apps/v1/Deployment/default/sample-app)
+- one document removed:
+  ---
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: sample-app
+    namespace: default
+    labels:
+      version: v1
+      app: sample
+  spec:
+    replicas: 3
+    selector:
+      matchLabels:
+        app: sample
+    template:
+      metadata:
+        labels:
+          version: v1
+          app: sample
+      spec:
+        containers:
+        - name: app
+          image: "nginx:1.19"
+          ports:
+          - containerPort: 80
+          env:
+          - name: ENV_VAR_1
+            value: value1
+          - name: ENV_VAR_2
+            value: value2
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: 500m
+            requests:
+              memory: 64Mi
+              cpu: 250m
+
+(root level)  (v1/Service/default/sample-service)
+- one document removed:
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: sample-service
+    namespace: default
+  spec:
+    selector:
+      app: sample
+    ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+(root level)  (apps/v1/Deployment/production/sample-app)
++ one document added:
+  ---
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: sample-app
+    namespace: production
+    labels:
+      version: v2
+      app: sample
+      environment: prod
+  spec:
+    replicas: 5
+    selector:
+      matchLabels:
+        app: sample
+    template:
+      metadata:
+        labels:
+          version: v2
+          app: sample
+          environment: prod
+      spec:
+        containers:
+        - name: app
+          image: "nginx:1.21"
+          ports:
+          - containerPort: 80
+          - containerPort: 443
+          env:
+          - name: ENV_VAR_1
+            value: value1-modified
+          - name: ENV_VAR_3
+            value: value3
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 1000m
+            requests:
+              memory: 128Mi
+              cpu: 500m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+(root level)  (v1/Service/production/sample-service)
++ one document added:
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: sample-service
+    namespace: production
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  spec:
+    type: LoadBalancer
+    selector:
+      app: sample
+    ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+    - protocol: TCP
+      port: 443
+      targetPort: 443
+

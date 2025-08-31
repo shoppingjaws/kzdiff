@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app
+  namespace: default
+  labels:
+    app: sample
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sample
+  template:
+    metadata:
+      labels:
+        app: sample
+        version: v1
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.19
+        ports:
+        - containerPort: 80
+        env:
+        - name: ENV_VAR_1
+          value: "value1"
+        - name: ENV_VAR_2
+          value: "value2"
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-service
+  namespace: default
+spec:
+  selector:
+    app: sample
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
