@@ -35,6 +35,7 @@
 		"test": "bun test",
 		"test:cli": "bun test cli.test.ts",
 		"test:unit": "bun test --ignore cli.test.ts",
+		"test:yaml": "bun test yaml-diff.test.ts",
 		"build": "bun build ./src/cli.ts --compile --outfile kzdiff",
 		"format": "biome format --write",
 		"format:check": "biome format",

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+data:
+  database_host: "localhost"
+  database_port: "5432"
+  cache_enabled: "true"
+  log_level: "info"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+  namespace: default
+type: Opaque
+data:
+  api_key: YWJjZGVmZ2hpams=
+  database_password: cGFzc3dvcmQxMjM=
