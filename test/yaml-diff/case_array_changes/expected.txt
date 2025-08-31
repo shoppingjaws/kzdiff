@@ -1,0 +1,56 @@
+
+data.servers  (v1/ConfigMap/default/app-config)
+  ± value change in multiline text (one insert, one deletion)
+      - host: server1.example.com
+        port: 8080
+    - - host: server2.example.com
+    -   port: 8081
+    + - host: server3.example.com
+    +   port: 8082
+    + - host: server4.example.com
+    +   port: 8083
+
+
+data.features  (v1/ConfigMap/default/app-config)
+  - one list entry removed:     + two list entries added:
+    - logging                     - monitoring
+                                  - caching
+
+spec.replicas  (apps/v1/Deployment/default/web-app)
+  ± value change
+    - 2
+    + 3
+
+spec.template.spec.containers.nginx  (apps/v1/Deployment/default/web-app)
+  + one map entry added:
+    env:
+    - name: NGINX_HOST
+      value: example.com
+    - name: NGINX_PORT
+      value: 80
+
+spec.template.spec.containers.nginx.image  (apps/v1/Deployment/default/web-app)
+  ± value change
+    - nginx:1.20
+    + nginx:1.21
+
+spec.template.spec.containers.nginx.ports  (apps/v1/Deployment/default/web-app)
+  + one list entry added:
+    - containerPort: 443
+
+spec.template.spec.containers.nginx.volumeMounts  (apps/v1/Deployment/default/web-app)
+  + one list entry added:
+    - name: cache
+      mountPath: /var/cache/nginx
+
+spec.template.spec.volumes  (apps/v1/Deployment/default/web-app)
+  + one list entry added:
+    - name: cache
+      emptyDir:
+        sizeLimit: 1Gi
+
+spec.template.spec.volumes.data  (apps/v1/Deployment/default/web-app)
+  - one map entry removed:     + one map entry added:
+    emptyDir: {}                 persistentVolumeClaim:
+                                   claimName: data-pvc
+

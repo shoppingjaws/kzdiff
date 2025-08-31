@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+data:
+  servers: |
+    - host: server1.example.com
+      port: 8080
+    - host: server3.example.com
+      port: 8082
+    - host: server4.example.com
+      port: 8083
+  features:
+    - authentication
+    - monitoring
+    - metrics
+    - caching
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx
+        - name: data
+          mountPath: /var/www
+        - name: cache
+          mountPath: /var/cache/nginx
+        env:
+        - name: NGINX_HOST
+          value: example.com
+        - name: NGINX_PORT
+          value: "80"
+      volumes:
+      - name: config
+        configMap:
+          name: nginx-config
+      - name: data
+        persistentVolumeClaim:
+          claimName: data-pvc
+      - name: cache
+        emptyDir:
+          sizeLimit: 1Gi

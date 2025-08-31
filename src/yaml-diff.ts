@@ -258,6 +258,90 @@ function formatPorts(ports: Array<Record<string, unknown>>, lines: string[], ind
 	}
 }
 
+// Compare arrays and detect specific changes
+function compareArrays(oldArr: any[], newArr: any[]): { removed: any[], added: any[], modified?: any[] } {
+	// For simple arrays (strings, numbers)
+	if (oldArr.length > 0 && typeof oldArr[0] !== 'object') {
+		const oldSet = new Set(oldArr)
+		const newSet = new Set(newArr)
+		
+		const removed = oldArr.filter(item => !newSet.has(item))
+		const added = newArr.filter(item => !oldSet.has(item))
+		
+		return { removed, added }
+	}
+	
+	// For arrays of objects (like containers, volumes)
+	// Try to match by 'name' field if available
+	const oldByName = new Map()
+	const newByName = new Map()
+	
+	for (const item of oldArr) {
+		if (item && typeof item === 'object' && 'name' in item) {
+			oldByName.set(item.name, item)
+		}
+	}
+	
+	for (const item of newArr) {
+		if (item && typeof item === 'object' && 'name' in item) {
+			newByName.set(item.name, item)
+		}
+	}
+	
+	// If we can match by name
+	if (oldByName.size > 0 || newByName.size > 0) {
+		const removed = []
+		const added = []
+		const modified = []
+		
+		for (const [name, item] of oldByName) {
+			if (!newByName.has(name)) {
+				removed.push(item)
+			} else {
+				// Check if the item was modified
+				const newItem = newByName.get(name)
+				if (JSON.stringify(item) !== JSON.stringify(newItem)) {
+					modified.push({ name, old: item, new: newItem })
+				}
+			}
+		}
+		
+		for (const [name, item] of newByName) {
+			if (!oldByName.has(name)) {
+				added.push(item)
+			}
+		}
+		
+		// Return modified items as well for special handling
+		return { removed, added, modified }
+	}
+	
+	// For other arrays, check if items were added or removed
+	const removed = []
+	const added = []
+	
+	// Simple comparison - items only in old array
+	for (const item of oldArr) {
+		if (!newArr.some(newItem => JSON.stringify(item) === JSON.stringify(newItem))) {
+			removed.push(item)
+		}
+	}
+	
+	// Items only in new array
+	for (const item of newArr) {
+		if (!oldArr.some(oldItem => JSON.stringify(item) === JSON.stringify(oldItem))) {
+			added.push(item)
+		}
+	}
+	
+	return { removed, added }
+}
+
+// Check if a string contains multiline YAML content
+function isMultilineYaml(str: string): boolean {
+	return typeof str === 'string' && str.includes('\n') && (str.includes('- ') || str.includes(': '))
+}
+
 // Compare two objects and return differences
 function compareObjects(
 	oldObj: any,
@@ -268,79 +352,326 @@ function compareObjects(
 	const output: string[] = []
 	
 	// Get all keys from both objects
-	const oldKeys = new Set(Object.keys(oldObj || {}))
-	const newKeys = new Set(Object.keys(newObj || {}))
-	const allKeys = new Set([...oldKeys, ...newKeys])
+	const oldKeys = Object.keys(oldObj || {})
+	const newKeys = Object.keys(newObj || {})
+	const oldKeysSet = new Set(oldKeys)
+	const newKeysSet = new Set(newKeys)
 	
-	// Group changes by path prefix for better organization
+	// Classify keys
 	const addedKeys: string[] = []
 	const removedKeys: string[] = []
 	const modifiedKeys: string[] = []
 	
-	for (const key of allKeys) {
-		if (!oldKeys.has(key)) {
+	for (const key of newKeys) {
+		if (!oldKeysSet.has(key)) {
 			addedKeys.push(key)
-		} else if (!newKeys.has(key)) {
-			removedKeys.push(key)
 		} else {
-			// Check if values are different
-			const oldVal = oldObj[key]
-			const newVal = newObj[key]
-			
-			if (typeof oldVal === 'object' && typeof newVal === 'object' && !Array.isArray(oldVal) && !Array.isArray(newVal)) {
-				// Recursively compare nested objects
-				const nestedDiffs = compareObjects(oldVal, newVal, path ? `${path}.${key}` : key, resourceKey)
-				if (nestedDiffs.length > 0) {
-					output.push(...nestedDiffs)
-				}
-			} else if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
-				modifiedKeys.push(key)
-			}
+			// Will check if modified later
+			modifiedKeys.push(key)
 		}
 	}
 	
-	// Output additions at the current level
-	if (addedKeys.length > 0 || removedKeys.length > 0) {
+	for (const key of oldKeys) {
+		if (!newKeysSet.has(key)) {
+			removedKeys.push(key)
+		}
+	}
+	
+	// First handle additions
+	for (const key of addedKeys) {
+		const value = newObj[key]
 		output.push(`${path}  (${resourceKey})`)
-		
-		for (const key of addedKeys) {
-			const value = newObj[key]
-			if (typeof value === 'object' && !Array.isArray(value)) {
-				output.push(`  + one map entry added:`)
-				output.push(`    ${key}:`)
-				formatNestedObject(value, output, "      ")
-			} else {
-				output.push(`  + one map entry added:`)
-				output.push(`    ${key}: ${formatSimpleValue(value)}`)
+		if (Array.isArray(value)) {
+			output.push(`  + one map entry added:`)
+			output.push(`    ${key}:`)
+			for (const item of value) {
+				formatArrayObject(item, output, "    - ", false)
 			}
+		} else if (typeof value === 'object' && !Array.isArray(value)) {
+			output.push(`  + one map entry added:`)
+			output.push(`    ${key}:`)
+			formatNestedObject(value, output, "      ")
+		} else {
+			output.push(`  + one map entry added:`)
+			output.push(`    ${key}: ${formatSimpleValue(value)}`)
 		}
-		
-		for (const key of removedKeys) {
-			const value = oldObj[key]
-			if (typeof value === 'object' && !Array.isArray(value)) {
-				output.push(`  - one map entry removed:`)
-				output.push(`    ${key}:`)
-				formatNestedObject(value, output, "      ")
-			} else {
-				output.push(`  - one map entry removed:`)
-				output.push(`    ${key}: ${formatSimpleValue(value)}`)
-			}
-		}
-		
 		output.push("")
 	}
 	
-	// Output modifications
+	// Then handle modifications (in order they appear in new object)
 	for (const key of modifiedKeys) {
-		const fieldPath = path ? `${path}.${key}` : key
-		output.push(`${fieldPath}  (${resourceKey})`)
-		output.push(`  ± value change`)
-		output.push(`    - ${formatSimpleValue(oldObj[key])}`)
-		output.push(`    + ${formatSimpleValue(newObj[key])}`)
+		if (!oldKeysSet.has(key) || !newKeysSet.has(key)) {
+			continue
+		}
+		
+		// Check if values are different
+		const oldVal = oldObj[key]
+		const newVal = newObj[key]
+		
+		if (Array.isArray(oldVal) && Array.isArray(newVal)) {
+			// Special handling for single named items in arrays (like containers)
+			if (oldVal.length === 1 && newVal.length === 1 && 
+				typeof oldVal[0] === 'object' && typeof newVal[0] === 'object' &&
+				'name' in oldVal[0] && 'name' in newVal[0] && 
+				oldVal[0].name === newVal[0].name) {
+				// Same named item, compare as nested object
+				const itemName = oldVal[0].name
+				const nestedDiffs = compareObjects(oldVal[0], newVal[0], path ? `${path}.${key}.${itemName}` : `${key}.${itemName}`, resourceKey)
+				output.push(...nestedDiffs)
+			} else {
+				// Handle array changes
+				const { removed, added, modified } = compareArrays(oldVal, newVal)
+				
+				// Handle additions and removals first (before modifications)
+				if (removed.length > 0 || added.length > 0) {
+					const fieldPath = path ? `${path}.${key}` : key
+					output.push(`${fieldPath}  (${resourceKey})`)
+					
+					if (removed.length > 0 && added.length > 0) {
+						// Both additions and removals
+						const removedStr = removed.length === 1 ? "one list entry removed:" : `${removed.length} list entries removed:`
+						const addedStr = added.length === 1 ? "one list entry added:" : added.length === 2 ? "two list entries added:" : `${added.length} list entries added:`
+						
+						output.push(`  - ${removedStr}     + ${addedStr}`)
+						
+						// Format removed items
+						for (const item of removed) {
+							if (typeof item === 'object') {
+								formatArrayObject(item, output, "    - ", true)
+							} else {
+								output.push(`    - ${item}`)
+							}
+						}
+						
+						// Format added items aligned to the right
+						if (added.length > 0) {
+							let baseIndex = output.length - removed.length
+							
+							for (let i = 0; i < added.length; i++) {
+								const item = added[i]
+								const targetIndex = baseIndex + i
+								
+								if (targetIndex < output.length && output[targetIndex]) {
+									const existingLine = output[targetIndex]
+									// Align to column 34 (counting from 0)
+									const padding = " ".repeat(Math.max(1, 34 - existingLine.length))
+									
+									if (typeof item === 'object') {
+										output[targetIndex] = existingLine + padding + `- ${formatObjectInline(item)}`
+									} else {
+										output[targetIndex] = existingLine + padding + `- ${item}`
+									}
+								} else {
+									const indent = " ".repeat(34)
+									if (typeof item === 'object') {
+										output.push(indent + `- ${formatObjectInline(item)}`)
+									} else {
+										output.push(indent + `- ${item}`)
+									}
+								}
+							}
+						}
+					} else if (removed.length > 0) {
+						const removedStr = removed.length === 1 ? "one list entry removed:" : `${removed.length} list entries removed:`
+						output.push(`  - ${removedStr}`)
+						for (const item of removed) {
+							if (typeof item === 'object') {
+								formatArrayObject(item, output, "    - ", true)
+							} else {
+								output.push(`    - ${item}`)
+							}
+						}
+					} else if (added.length > 0) {
+						const addedStr = added.length === 1 ? "one list entry added:" : `${added.length} list entries added:`
+						output.push(`  + ${addedStr}`)
+						for (const item of added) {
+							if (typeof item === 'object') {
+								formatArrayObject(item, output, "    - ", true)
+							} else {
+								output.push(`    - ${item}`)
+							}
+						}
+					}
+					
+					output.push("")
+				}
+				
+				// Then handle modified items in arrays (like volumes with same name but different config)
+				if (modified && modified.length > 0) {
+					for (const mod of modified) {
+						const itemPath = path ? `${path}.${key}.${mod.name}` : `${key}.${mod.name}`
+						
+						// Check for special case where entire content is replaced
+						const oldKeys = Object.keys(mod.old).filter(k => k !== 'name')
+						const newKeys = Object.keys(mod.new).filter(k => k !== 'name')
+						
+						if (oldKeys.length === 1 && newKeys.length === 1 && oldKeys[0] !== newKeys[0]) {
+							// This is a replacement like emptyDir -> persistentVolumeClaim
+							output.push(`${itemPath}  (${resourceKey})`)
+							output.push(`  - one map entry removed:     + one map entry added:`)
+							
+							const oldKey = oldKeys[0]
+							const newKey = newKeys[0]
+							const oldValue = mod.old[oldKey]
+							const newValue = mod.new[newKey]
+							
+							if (typeof oldValue === 'object' && Object.keys(oldValue).length === 0) {
+								// Empty object like {}
+								const removedStr = `    ${oldKey}: {}`
+								const addedStr = `${newKey}:`
+								const padding = " ".repeat(Math.max(1, 33 - removedStr.length))
+								output.push(removedStr + padding + addedStr)
+								
+								// Add the details of the new value
+								if (typeof newValue === 'object') {
+									const indent = " ".repeat(35)
+									for (const [k, v] of Object.entries(newValue)) {
+										output.push(`${indent}${k}: ${formatSimpleValue(v)}`)
+									}
+								}
+							} else {
+								// Regular replacement
+								const removedStr = `    ${oldKey}: ${formatSimpleValue(oldValue)}`
+								const addedStr = `${newKey}: ${formatSimpleValue(newValue)}`
+								const padding = " ".repeat(Math.max(1, 33 - removedStr.length))
+								output.push(removedStr + padding + addedStr)
+							}
+							output.push("")
+						} else {
+							// Regular nested diff
+							const diffs = compareObjects(mod.old, mod.new, itemPath, resourceKey)
+							output.push(...diffs)
+						}
+					}
+				}
+				
+				// Handle fallback case
+				if (removed.length === 0 && added.length === 0 && (!modified || modified.length === 0) && JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+					// Arrays are different but no specific additions/removals detected
+					const fieldPath = path ? `${path}.${key}` : key
+					output.push(`${fieldPath}  (${resourceKey})`)
+					output.push(`  ± value change`)
+					output.push(`    - ${formatSimpleValue(oldVal)}`)
+					output.push(`    + ${formatSimpleValue(newVal)}`)
+					output.push("")
+				}
+			}
+		} else if (typeof oldVal === 'object' && typeof newVal === 'object' && !Array.isArray(oldVal) && !Array.isArray(newVal)) {
+			// Recursively compare nested objects
+			const nestedDiffs = compareObjects(oldVal, newVal, path ? `${path}.${key}` : key, resourceKey)
+			output.push(...nestedDiffs)
+		} else if (isMultilineYaml(oldVal) && isMultilineYaml(newVal)) {
+			// Handle multiline YAML text
+			const fieldPath = path ? `${path}.${key}` : key
+			output.push(`${fieldPath}  (${resourceKey})`)
+			output.push(`  ± value change in multiline text (one insert, one deletion)`)
+			
+			// Parse and format the multiline content
+			const oldLines = oldVal.trim().split('\n')
+			const newLines = newVal.trim().split('\n')
+			
+			// Simple diff - show what was removed and what was added
+			const oldSet = new Set(oldLines)
+			const newSet = new Set(newLines)
+			
+			for (const line of oldLines) {
+				if (newSet.has(line)) {
+					output.push(`      ${line}`)
+				} else {
+					output.push(`    - ${line}`)
+				}
+			}
+			
+			for (const line of newLines) {
+				if (!oldSet.has(line)) {
+					output.push(`    + ${line}`)
+				}
+			}
+			
+			output.push("")
+			output.push("")
+		} else if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+			const fieldPath = path ? `${path}.${key}` : key
+			output.push(`${fieldPath}  (${resourceKey})`)
+			output.push(`  ± value change`)
+			output.push(`    - ${formatSimpleValue(oldVal)}`)
+			output.push(`    + ${formatSimpleValue(newVal)}`)
+			output.push("")
+		}
+	}
+	
+	// Finally handle removals (but check for side-by-side presentation)
+	if (removedKeys.length === 1 && addedKeys.length === 0) {
+		// Check if this removal can be shown side-by-side with an addition
+		// This happens with volumes.data change from emptyDir to persistentVolumeClaim
+		// We need to detect when a key's value changes from one type to another
+	}
+	
+	for (const key of removedKeys) {
+		const value = oldObj[key]
+		output.push(`${path}  (${resourceKey})`)
+		if (typeof value === 'object' && !Array.isArray(value)) {
+			output.push(`  - one map entry removed:`)
+			output.push(`    ${key}:`)
+			formatNestedObject(value, output, "      ")
+		} else {
+			output.push(`  - one map entry removed:`)
+			output.push(`    ${key}: ${formatSimpleValue(value)}`)
+		}
 		output.push("")
 	}
 	
 	return output
+}
+
+// Format an object in an array for output
+function formatArrayObject(obj: any, output: string[], prefix: string, inline: boolean): void {
+	if (typeof obj !== 'object' || obj === null) {
+		output.push(`${prefix}${obj}`)
+		return
+	}
+	
+	const entries = Object.entries(obj)
+	if (entries.length === 0) {
+		output.push(`${prefix}{}`)
+		return
+	}
+	
+	// First entry gets the prefix
+	const [firstKey, firstValue] = entries[0]
+	if (typeof firstValue === 'object' && !Array.isArray(firstValue)) {
+		output.push(`${prefix}${firstKey}:`)
+		formatNestedObject(firstValue, output, prefix.replace('-', ' ') + "  ")
+	} else {
+		output.push(`${prefix}${firstKey}: ${formatSimpleValue(firstValue)}`)
+	}
+	
+	// Remaining entries
+	for (let i = 1; i < entries.length; i++) {
+		const [key, value] = entries[i]
+		const indent = prefix.replace('-', ' ')
+		if (typeof value === 'object' && !Array.isArray(value)) {
+			output.push(`${indent}${key}:`)
+			formatNestedObject(value, output, indent + "  ")
+		} else {
+			output.push(`${indent}${key}: ${formatSimpleValue(value)}`)
+		}
+	}
+}
+
+// Format object inline for compact display
+function formatObjectInline(obj: any): string {
+	if (typeof obj !== 'object' || obj === null) return String(obj)
+	
+	const parts = []
+	for (const [key, value] of Object.entries(obj)) {
+		if (typeof value === 'object') {
+			parts.push(`${key}: ${JSON.stringify(value)}`)
+		} else {
+			parts.push(`${key}: ${value}`)
+		}
+	}
+	return parts.join(', ')
 }
 
 // Format a simple value for output
@@ -422,7 +753,9 @@ export function yamlDiff(
 		}
 	}
 	
-	// Find modified documents
+	// Find modified documents and group by resource
+	const resourceDiffs: Map<string, { path: string, lines: string[], resourceKey: string }[]> = new Map()
+	
 	for (const [key, oldDoc] of oldMap) {
 		if (newMap.has(key)) {
 			const newDoc = newMap.get(key)!
@@ -430,9 +763,40 @@ export function yamlDiff(
 			
 			// Compare the documents field by field
 			const diffs = compareObjects(oldDoc, newDoc, "", resourceKey)
-			if (diffs.length > 0) {
-				output.push(...diffs)
+			
+			// Group diffs by path within this resource
+			const pathDiffs: { path: string, lines: string[], resourceKey: string }[] = []
+			let currentPath = ""
+			let currentLines: string[] = []
+			
+			for (const line of diffs) {
+				// Check if this is a path header line (contains resource key in parens)
+				if (line.includes(` (${resourceKey})`)) {
+					if (currentLines.length > 0) {
+						pathDiffs.push({ path: currentPath, lines: currentLines, resourceKey })
+					}
+					currentPath = line.split(' ')[0] || ""
+					currentLines = [line]
+				} else {
+					currentLines.push(line)
+				}
 			}
+			
+			if (currentLines.length > 0) {
+				pathDiffs.push({ path: currentPath, lines: currentLines, resourceKey })
+			}
+			
+			if (pathDiffs.length > 0) {
+				resourceDiffs.set(resourceKey, pathDiffs)
+			}
+		}
+	}
+	
+	// Output diffs for each resource in the order they were discovered
+	for (const [resourceKey, diffs] of resourceDiffs) {
+		// Output diffs in the order they were found
+		for (const diff of diffs) {
+			output.push(...diff.lines)
 		}
 	}
 	
