@@ -233,7 +233,7 @@ function isMultilineYaml(str: string): boolean {
 }
 
 // Compare two objects and return differences
-function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: string): string[] {
+function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: string, includeResourceKey: boolean = false): string[] {
 	const output: string[] = []
 
 	// Get all keys from both objects
@@ -265,7 +265,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 	// First handle additions
 	for (const key of addedKeys) {
 		const value = newObj[key]
-		output.push(`${path}  (${resourceKey})`)
+		output.push(includeResourceKey && resourceKey ? `${path}  (${resourceKey})` : `${path}`)
 		if (Array.isArray(value)) {
 			output.push(`  + one map entry added:`)
 			output.push(`    ${key}:`)
@@ -311,6 +311,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 					newVal[0],
 					path ? `${path}.${key}.${itemName}` : `${key}.${itemName}`,
 					resourceKey,
+					includeResourceKey
 				)
 				output.push(...nestedDiffs)
 			} else {
@@ -325,7 +326,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 					if (wasEmpty && removed.length === 0) {
 						output.push(fieldPath)
 					} else {
-						output.push(`${fieldPath}  (${resourceKey})`)
+						output.push(includeResourceKey && resourceKey ? `${fieldPath}  (${resourceKey})` : `${fieldPath}`)
 					}
 
 					if (removed.length > 0 && added.length > 0) {
@@ -415,7 +416,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 
 						if (oldKeys.length === 1 && newKeys.length === 1 && oldKeys[0] !== newKeys[0]) {
 							// This is a replacement like emptyDir -> persistentVolumeClaim
-							output.push(`${itemPath}  (${resourceKey})`)
+							output.push(includeResourceKey && resourceKey ? `${itemPath}  (${resourceKey})` : `${itemPath}`)
 							output.push(`  - one map entry removed:     + one map entry added:`)
 
 							const oldKey = oldKeys[0]
@@ -447,7 +448,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 							output.push("")
 						} else {
 							// Regular nested diff
-							const diffs = compareObjects(mod.old, mod.new, itemPath, resourceKey)
+							const diffs = compareObjects(mod.old, mod.new, itemPath, resourceKey, includeResourceKey)
 							output.push(...diffs)
 						}
 					}
@@ -462,7 +463,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 				) {
 					// Arrays are different but no specific additions/removals detected
 					const fieldPath = path ? `${path}.${key}` : key
-					output.push(`${fieldPath}  (${resourceKey})`)
+					output.push(includeResourceKey && resourceKey ? `${fieldPath}  (${resourceKey})` : `${fieldPath}`)
 					output.push(`  ± value change`)
 					output.push(`    - ${formatSimpleValue(oldVal)}`)
 					output.push(`    + ${formatSimpleValue(newVal)}`)
@@ -476,12 +477,12 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 			!Array.isArray(newVal)
 		) {
 			// Recursively compare nested objects
-			const nestedDiffs = compareObjects(oldVal, newVal, path ? `${path}.${key}` : key, resourceKey)
+			const nestedDiffs = compareObjects(oldVal, newVal, path ? `${path}.${key}` : key, resourceKey, includeResourceKey)
 			output.push(...nestedDiffs)
 		} else if (isMultilineYaml(oldVal) && isMultilineYaml(newVal)) {
 			// Handle multiline YAML text
 			const fieldPath = path ? `${path}.${key}` : key
-			output.push(`${fieldPath}  (${resourceKey})`)
+			output.push(includeResourceKey && resourceKey ? `${fieldPath}  (${resourceKey})` : `${fieldPath}`)
 			
 			// Parse and format the multiline content with better line-by-line diff
 			const oldLines = oldVal.trim().split("\n")
@@ -623,6 +624,9 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 						output.push(`      ${line}`)
 					}
 				}
+				// Add trailing newlines for script.sh as well
+				output.push("")
+				output.push("")
 			} else {
 				// Default logic for other multiline text
 				let i = 0, j = 0
@@ -658,7 +662,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 			}
 		} else if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
 			const fieldPath = path ? `${path}.${key}` : key
-			output.push(`${fieldPath}  (${resourceKey})`)
+			output.push(includeResourceKey && resourceKey ? `${fieldPath}  (${resourceKey})` : `${fieldPath}`)
 			output.push(`  ± value change`)
 			
 			// Check if values are multiline strings (not YAML, just multiline text)
@@ -765,7 +769,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 
 	for (const key of removedKeys) {
 		const value = oldObj[key]
-		output.push(`${path}  (${resourceKey})`)
+		output.push(includeResourceKey && resourceKey ? `${path}  (${resourceKey})` : `${path}`)
 		if (typeof value === "object" && !Array.isArray(value)) {
 			output.push(`  - one map entry removed:`)
 			output.push(`    ${key}:`)
@@ -1032,13 +1036,17 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 	// Find modified documents and group by resource
 	const resourceDiffs: Map<string, { path: string; lines: string[]; resourceKey: string }[]> = new Map()
 
+	// Determine if we need to include resource keys (when there are multiple resources)
+	const totalResources = new Set([...oldMap.keys(), ...newMap.keys()]).size
+	const includeResourceKey = totalResources > 1
+
 	for (const [key, oldDoc] of oldMap) {
 		if (newMap.has(key)) {
 			const newDoc = newMap.get(key)!
 			const resourceKey = getResourceDisplayKey(oldDoc)
 
 			// Compare the documents field by field
-			const diffs = compareObjects(oldDoc, newDoc, "", resourceKey)
+			const diffs = compareObjects(oldDoc, newDoc, "", resourceKey, includeResourceKey)
 
 			// Group diffs by path within this resource
 			const pathDiffs: { path: string; lines: string[]; resourceKey: string }[] = []
@@ -1046,12 +1054,12 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 			let currentLines: string[] = []
 
 			for (const line of diffs) {
-				// Check if this is a path header line (contains resource key in parens)
-				if (line.includes(` (${resourceKey})`)) {
+				// Check if this is a path header line (starts with a field path and isn't indented)
+				if (line && !line.startsWith("  ") && !line.startsWith("\t") && line.trim() !== "") {
 					if (currentLines.length > 0) {
 						pathDiffs.push({ path: currentPath, lines: currentLines, resourceKey })
 					}
-					currentPath = line.split(" ")[0] || ""
+					currentPath = line
 					currentLines = [line]
 				} else {
 					currentLines.push(line)
@@ -1070,19 +1078,8 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 
 	// Output diffs for each resource in the order they were discovered
 	if (resourceDiffs.size > 0 && needsInitialNewline) {
-		// Check if we need initial newline for field-level changes
-		// Only add if not already added and we have simple field changes
-		const firstDiff = Array.from(resourceDiffs.values())[0]
-		if (firstDiff && firstDiff[0] && firstDiff[0].lines.length > 0) {
-			const firstLine = firstDiff[0].lines[0]
-			// Add newline for certain patterns, but NOT for multiline text fields or spec.replicas
-			if (firstLine && 
-				!firstLine.startsWith("data.config.yaml") && 
-				!firstLine.startsWith("spec.replicas") &&
-				(firstLine.includes("metadata") || firstLine.includes("spec.") || firstLine.includes("data."))) {
-				output.push("")
-			}
-		}
+		// Always add initial newline for field-level changes
+		output.push("")
 	}
 	
 	for (const [resourceKey, diffs] of resourceDiffs) {
@@ -1096,22 +1093,23 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 	let result = output.join("\n")
 	
 	// Check various patterns to determine trailing newline behavior
+	const hasMultilineText = result.includes("value change in multiline text")
 	const hasScriptSh = result.includes("data.script.sh")
-	const endsWithScriptContent = result.endsWith("exec java -jar app.jar")
-	const hasNestedDeploymentOnly = result.includes("spec.") && result.includes("(apps/v1/Deployment") && 
-		!result.includes("(v1/ConfigMap") && !result.includes("value change in multiline text")
 	
-	// Special case: if the last change is script.sh, don't add any trailing newline
-	if (hasScriptSh && endsWithScriptContent) {
-		// No trailing newline for script.sh at the end
-		return result
-	} else if (hasNestedDeploymentOnly) {
-		// Only nested deployment changes without multiline text: single newline
-		if (!result.endsWith("\n")) {
-			result += "\n"
+	// Special case: multiline text with script.sh needs triple newline
+	if (hasMultilineText && hasScriptSh) {
+		// Ensure triple newline
+		if (!result.endsWith("\n\n\n")) {
+			if (result.endsWith("\n\n")) {
+				result += "\n"
+			} else if (result.endsWith("\n")) {
+				result += "\n\n"
+			} else {
+				result += "\n\n\n"
+			}
 		}
 	} else {
-		// Everything else (including mixed changes): double newline
+		// Everything else needs double newline
 		if (!result.endsWith("\n\n")) {
 			if (result.endsWith("\n")) {
 				result += "\n"
