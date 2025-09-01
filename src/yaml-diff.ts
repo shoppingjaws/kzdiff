@@ -233,7 +233,13 @@ function isMultilineYaml(str: string): boolean {
 }
 
 // Compare two objects and return differences
-function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: string, includeResourceKey: boolean = false): string[] {
+function compareObjects(
+	oldObj: any,
+	newObj: any,
+	path: string,
+	resourceKey: string,
+	includeResourceKey: boolean = false,
+): string[] {
 	const output: string[] = []
 
 	// Get all keys from both objects
@@ -311,7 +317,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 					newVal[0],
 					path ? `${path}.${key}.${itemName}` : `${key}.${itemName}`,
 					resourceKey,
-					includeResourceKey
+					includeResourceKey,
 				)
 				output.push(...nestedDiffs)
 			} else {
@@ -365,16 +371,16 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 									const padding = " ".repeat(Math.max(1, 34 - existingLine.length))
 
 									if (typeof item === "object") {
-										output[targetIndex] = existingLine + padding + `- ${formatObjectInline(item)}`
+										output[targetIndex] = `${existingLine + padding}- ${formatObjectInline(item)}`
 									} else {
-										output[targetIndex] = existingLine + padding + `- ${item}`
+										output[targetIndex] = `${existingLine + padding}- ${item}`
 									}
 								} else {
 									const indent = " ".repeat(34)
 									if (typeof item === "object") {
-										output.push(indent + `- ${formatObjectInline(item)}`)
+										output.push(`${indent}- ${formatObjectInline(item)}`)
 									} else {
-										output.push(indent + `- ${item}`)
+										output.push(`${indent}- ${item}`)
 									}
 								}
 							}
@@ -419,8 +425,8 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 							output.push(includeResourceKey && resourceKey ? `${itemPath}  (${resourceKey})` : `${itemPath}`)
 							output.push(`  - one map entry removed:     + one map entry added:`)
 
-							const oldKey = oldKeys[0]
-							const newKey = newKeys[0]
+							const oldKey = oldKeys[0]!
+							const newKey = newKeys[0]!
 							const oldValue = mod.old[oldKey]
 							const newValue = mod.new[newKey]
 
@@ -483,7 +489,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 			// Handle multiline YAML text
 			const fieldPath = path ? `${path}.${key}` : key
 			output.push(includeResourceKey && resourceKey ? `${fieldPath}  (${resourceKey})` : `${fieldPath}`)
-			
+
 			// Parse and format the multiline content with better line-by-line diff
 			const oldLines = oldVal.trim().split("\n")
 			const newLines = newVal.trim().split("\n")
@@ -491,70 +497,72 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 			// Create a detailed diff to understand changes
 			const deletedLines: number[] = []
 			const insertedLines: number[] = []
-			
+
 			// Find lines that were deleted (in old but not in new)
 			for (let i = 0; i < oldLines.length; i++) {
 				const oldLine = oldLines[i]
 				// Check if this exact line exists in new
 				if (!newLines.includes(oldLine)) {
 					// Check if this is a value change (same key, different value)
-					const oldKey = oldLine.split(':')[0]
-					const hasKeyInNew = oldKey.includes(':') ? false :
-						newLines.some(nl => nl.split(':')[0] === oldKey && nl.includes(':'))
-					
+					const oldKey = oldLine.split(":")[0]
+					const hasKeyInNew = oldKey.includes(":")
+						? false
+						: newLines.some((nl: string) => nl.split(":")[0] === oldKey && nl.includes(":"))
+
 					if (hasKeyInNew) {
 						// This is a changed line (will be counted as deletion)
 						deletedLines.push(i)
-					} else if (!oldLine.trim().startsWith('-')) {
+					} else if (!oldLine.trim().startsWith("-")) {
 						// This line was completely removed
 						deletedLines.push(i)
 					}
 				}
 			}
-			
+
 			// Find lines that were inserted (in new but not in old)
 			for (let i = 0; i < newLines.length; i++) {
 				const newLine = newLines[i]
 				// Check if this exact line exists in old
 				if (!oldLines.includes(newLine)) {
 					// Check if this is a value change (same key, different value)
-					const newKey = newLine.split(':')[0]
-					const hasKeyInOld = newKey.includes(':') ? false :
-						oldLines.some(ol => ol.split(':')[0] === newKey && ol.includes(':'))
-					
+					const newKey = newLine.split(":")[0]
+					const hasKeyInOld = newKey.includes(":")
+						? false
+						: oldLines.some((ol: string) => ol.split(":")[0] === newKey && ol.includes(":"))
+
 					if (hasKeyInOld) {
 						// This is a changed line (will be counted as insertion)
 						insertedLines.push(i)
-					} else if (!newLine.trim().startsWith('-')) {
+					} else if (!newLine.trim().startsWith("-")) {
 						// This line was completely added
 						insertedLines.push(i)
 					}
 				}
 			}
-			
+
 			// Count contiguous blocks
 			let insertBlocks = 0
 			let deleteBlocks = 0
-			
+
 			// Count deletion blocks
 			for (let i = 0; i < deletedLines.length; i++) {
-				if (i === 0 || deletedLines[i] !== deletedLines[i-1] + 1) {
+				if (i === 0 || deletedLines[i] !== deletedLines[i - 1]! + 1) {
 					deleteBlocks++
 				}
 			}
-			
+
 			// Count insertion blocks
 			for (let i = 0; i < insertedLines.length; i++) {
-				if (i === 0 || insertedLines[i] !== insertedLines[i-1] + 1) {
+				if (i === 0 || insertedLines[i] !== insertedLines[i - 1]! + 1) {
 					insertBlocks++
 				}
 			}
-			
+
 			// Format the count message like dyff
 			// For config.yaml case: dyff counts value changes as individual items
 			// but contiguous new lines as blocks
 			let countMsg = "  ± value change in multiline text ("
-			
+
 			// Special handling for specific patterns
 			if (fieldPath === "data.config.yaml" && insertedLines.length === 4 && deletedLines.length === 2) {
 				// This is the specific case where we have 2 value changes + 1 new section
@@ -565,19 +573,23 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 			} else if (insertBlocks > 0 || insertedLines.length > 0) {
 				// General case: count blocks for contiguous changes
 				const actualInserts = insertBlocks > 0 ? insertBlocks : insertedLines.length
-				const insertCount = actualInserts === 1 ? "one insert" : 
-					actualInserts === 2 ? "two inserts" : 
-					actualInserts === 3 ? "three inserts" :
-					actualInserts === 4 ? "four inserts" :
-					`${actualInserts} inserts`
+				const insertCount =
+					actualInserts === 1
+						? "one insert"
+						: actualInserts === 2
+							? "two inserts"
+							: actualInserts === 3
+								? "three inserts"
+								: actualInserts === 4
+									? "four inserts"
+									: `${actualInserts} inserts`
 				countMsg += insertCount
-				
+
 				if (deleteBlocks > 0 || deletedLines.length > 0) {
 					countMsg += ", "
 					const actualDeletes = deleteBlocks > 0 ? deleteBlocks : deletedLines.length
-					const deleteCount = actualDeletes === 1 ? "one deletion" : 
-						actualDeletes === 2 ? "two deletions" : 
-						`${actualDeletes} deletions`
+					const deleteCount =
+						actualDeletes === 1 ? "one deletion" : actualDeletes === 2 ? "two deletions" : `${actualDeletes} deletions`
 					countMsg += deleteCount
 				} else {
 					countMsg += ", no deletions"
@@ -585,9 +597,8 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 			} else if (deleteBlocks > 0 || deletedLines.length > 0) {
 				countMsg += "no inserts, "
 				const actualDeletes = deleteBlocks > 0 ? deleteBlocks : deletedLines.length
-				const deleteCount = actualDeletes === 1 ? "one deletion" : 
-					actualDeletes === 2 ? "two deletions" : 
-					`${actualDeletes} deletions`
+				const deleteCount =
+					actualDeletes === 1 ? "one deletion" : actualDeletes === 2 ? "two deletions" : `${actualDeletes} deletions`
 				countMsg += deleteCount
 			} else {
 				countMsg += "no changes"
@@ -598,13 +609,13 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 			// Output the diff - need to determine what's inserted/deleted
 			const deletions: string[] = []
 			const insertions: string[] = []
-			
+
 			for (const line of oldLines) {
 				if (!newLines.includes(line)) {
 					deletions.push(line)
 				}
 			}
-			
+
 			for (const line of newLines) {
 				if (!oldLines.includes(line)) {
 					insertions.push(line)
@@ -629,11 +640,12 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 				output.push("")
 			} else {
 				// Default logic for other multiline text
-				let i = 0, j = 0
+				let i = 0,
+					j = 0
 				while (i < oldLines.length || j < newLines.length) {
 					const oldLine = i < oldLines.length ? oldLines[i] : null
 					const newLine = j < newLines.length ? newLines[j] : null
-					
+
 					if (oldLine === newLine) {
 						// Common line
 						output.push(`      ${oldLine}`)
@@ -653,7 +665,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 						if (newLine !== null) j++
 					}
 				}
-				
+
 				// Add trailing newline for all cases except script.sh
 				if (fieldPath !== "data.script.sh") {
 					output.push("")
@@ -664,45 +676,46 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 			const fieldPath = path ? `${path}.${key}` : key
 			output.push(includeResourceKey && resourceKey ? `${fieldPath}  (${resourceKey})` : `${fieldPath}`)
 			output.push(`  ± value change`)
-			
+
 			// Check if values are multiline strings (not YAML, just multiline text)
-			if (typeof oldVal === "string" && typeof newVal === "string" &&
-				(oldVal.includes("\n") || newVal.includes("\n"))) {
+			if (
+				typeof oldVal === "string" &&
+				typeof newVal === "string" &&
+				(oldVal.includes("\n") || newVal.includes("\n"))
+			) {
 				// Check if this could be treated as multiline text changes
 				const oldLines = oldVal.trim().split("\n")
 				const newLines = newVal.trim().split("\n")
-				
+
 				// Count lines that are different
 				let insertCount = 0
 				let deleteCount = 0
-				
+
 				for (const line of oldLines) {
 					if (!newLines.includes(line)) {
 						deleteCount++
 					}
 				}
-				
+
 				for (const line of newLines) {
 					if (!oldLines.includes(line)) {
 						insertCount++
 					}
 				}
-				
+
 				// If there are insertions/deletions, format as multiline text
 				if (insertCount > 0 || deleteCount > 0) {
 					output.pop() // Remove the "± value change" line
 					let countMsg = "  ± value change in multiline text ("
 					if (insertCount > 0) {
-						const insertStr = insertCount === 1 ? "one insert" : 
-							insertCount === 2 ? "two inserts" : 
-							`${insertCount} inserts`
+						const insertStr =
+							insertCount === 1 ? "one insert" : insertCount === 2 ? "two inserts" : `${insertCount} inserts`
 						countMsg += insertStr
 					}
 					if (deleteCount > 0) {
 						if (insertCount > 0) countMsg += ", "
-						const deleteStr = deleteCount === 1 ? "one deletion" : 
-							deleteCount === 2 ? "two deletions" :
-							`${deleteCount} deletions`
+						const deleteStr =
+							deleteCount === 1 ? "one deletion" : deleteCount === 2 ? "two deletions" : `${deleteCount} deletions`
 						countMsg += deleteStr
 					}
 					if (insertCount === 0 && deleteCount === 0) {
@@ -714,7 +727,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 					}
 					countMsg += ")"
 					output.push(countMsg)
-					
+
 					// Output the diff with proper ordering
 					// For script.sh with one insertion and no deletions, show in order
 					if (fieldPath === "data.script.sh" && insertCount === 1 && deleteCount === 0) {
@@ -735,7 +748,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 								output.push(`    - ${line}`)
 							}
 						}
-						
+
 						for (const line of newLines) {
 							if (!oldLines.includes(line)) {
 								output.push(`    + ${line}`)
@@ -785,7 +798,7 @@ function compareObjects(oldObj: any, newObj: any, path: string, resourceKey: str
 }
 
 // Format an object in an array for output
-function formatArrayObject(obj: any, output: string[], prefix: string, inline: boolean): void {
+function formatArrayObject(obj: any, output: string[], prefix: string, _inline: boolean): void {
 	if (typeof obj !== "object" || obj === null) {
 		output.push(`${prefix}${obj}`)
 		return
@@ -798,21 +811,21 @@ function formatArrayObject(obj: any, output: string[], prefix: string, inline: b
 	}
 
 	// First entry gets the prefix
-	const [firstKey, firstValue] = entries[0]
+	const [firstKey, firstValue] = entries[0]!
 	if (typeof firstValue === "object" && !Array.isArray(firstValue)) {
 		output.push(`${prefix}${firstKey}:`)
-		formatNestedObject(firstValue, output, prefix.replace("-", " ") + "  ")
+		formatNestedObject(firstValue, output, `${prefix.replace("-", " ")}  `)
 	} else {
 		output.push(`${prefix}${firstKey}: ${formatSimpleValue(firstValue)}`)
 	}
 
 	// Remaining entries
 	for (let i = 1; i < entries.length; i++) {
-		const [key, value] = entries[i]
+		const [key, value] = entries[i]!
 		const indent = prefix.replace("-", " ")
 		if (typeof value === "object" && !Array.isArray(value)) {
 			output.push(`${indent}${key}:`)
-			formatNestedObject(value, output, indent + "  ")
+			formatNestedObject(value, output, `${indent}  `)
 		} else {
 			// Special handling for 'value' field in env vars
 			if (key === "value" && typeof value === "string" && (value === "true" || value === "false")) {
@@ -871,7 +884,7 @@ function formatNestedObject(obj: any, output: string[], indent: string): void {
 	for (const [key, value] of Object.entries(obj)) {
 		if (typeof value === "object" && value !== null && !Array.isArray(value)) {
 			output.push(`${indent}${key}:`)
-			formatNestedObject(value, output, indent + "  ")
+			formatNestedObject(value, output, `${indent}  `)
 		} else {
 			// Special handling for 'value' field in env vars
 			if (key === "value" && typeof value === "string" && (value === "true" || value === "false")) {
@@ -884,7 +897,7 @@ function formatNestedObject(obj: any, output: string[], indent: string): void {
 }
 
 // Main diff function
-export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOptions = {}): string {
+export function yamlDiff(oldYaml: string, newYaml: string, _options: YamlDiffOptions = {}): string {
 	const oldDocs = parseYamlDocuments(oldYaml)
 	const newDocs = parseYamlDocuments(newYaml)
 
@@ -901,7 +914,7 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 	}
 
 	const output: string[] = []
-	
+
 	// Add initial empty line for most cases
 	// (but will be added selectively based on content type)
 	let needsInitialNewline = true
@@ -927,9 +940,9 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 		output.push("")
 		needsInitialNewline = false
 	}
-	
+
 	// Find removed documents
-	for (const [key, oldDoc] of removedDocs) {
+	for (const [_key, oldDoc] of removedDocs) {
 		// Document was removed - always show resource key for removals
 		output.push(`(root level)  (${getResourceDisplayKey(oldDoc)})`)
 		output.push("- one document removed:")
@@ -979,7 +992,7 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 	}
 
 	// Find added documents
-	for (const [key, newDoc] of addedDocs) {
+	for (const [_key, newDoc] of addedDocs) {
 		// Document was added
 		// Only show resource key if there are also removals (dyff behavior)
 		if (removedDocs.length > 0) {
@@ -1081,8 +1094,8 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 		// Always add initial newline for field-level changes
 		output.push("")
 	}
-	
-	for (const [resourceKey, diffs] of resourceDiffs) {
+
+	for (const [_resourceKey, diffs] of resourceDiffs) {
 		// Output diffs in the order they were found
 		for (const diff of diffs) {
 			output.push(...diff.lines)
@@ -1091,11 +1104,11 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 
 	// Join output and ensure proper trailing newline
 	let result = output.join("\n")
-	
+
 	// Check various patterns to determine trailing newline behavior
 	const hasMultilineText = result.includes("value change in multiline text")
 	const hasScriptSh = result.includes("data.script.sh")
-	
+
 	// Special case: multiline text with script.sh needs triple newline
 	if (hasMultilineText && hasScriptSh) {
 		// Ensure triple newline
@@ -1118,6 +1131,6 @@ export function yamlDiff(oldYaml: string, newYaml: string, options: YamlDiffOpti
 			}
 		}
 	}
-	
+
 	return result
 }

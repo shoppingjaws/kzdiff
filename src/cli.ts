@@ -90,7 +90,7 @@ Note: When using commit hashes, use the full 40-character SHA`
 			const nextArg = args[i + 1]
 			if (i + 1 < args.length && nextArg !== undefined) {
 				const lines = parseInt(nextArg, 10)
-				if (isNaN(lines) || lines < 0) {
+				if (Number.isNaN(lines) || lines < 0) {
 					console.error(`Error: ${args[i]} requires a positive number`)
 					process.exit(1)
 				}

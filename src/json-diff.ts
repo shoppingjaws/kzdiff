@@ -322,31 +322,31 @@ function formatContextItems(
 ): void {
 	// Skip if no contexts
 	if (contexts.length === 0) return
-	
+
 	const indent = "  "
 	let linesUsed = 0
 	const maxLinesToShow = maxLines || contexts.length
-	
+
 	// Get the parent path of the diff
 	const diffSegments = diffPath.split(".")
 	const diffParent = diffSegments.slice(0, -1).join(".")
-	
+
 	// Track which parent paths we've already shown
 	const shownParents = new Set<string>()
-	
+
 	for (const ctx of contexts) {
 		// Stop if we've reached the line limit
 		if (linesUsed >= maxLinesToShow) break
-		
+
 		// Skip if this is another diff that will be shown separately
 		if (diffs.some((d) => d.path === ctx.key)) {
 			continue
 		}
-		
+
 		// Get context segments
 		const ctxSegments = ctx.key.split(".")
 		const ctxParent = ctxSegments.slice(0, -1).join(".")
-		
+
 		// Check if this is a sibling (same parent)
 		if (ctxParent === diffParent) {
 			// Simple sibling - just show the key at the same level
@@ -358,9 +358,9 @@ function formatContextItems(
 			// Different parent - need to show hierarchy
 			// Determine the display path based on relationship to basePath
 			let displaySegments: string[]
-			let baseDepthOffset = 0
-			
-			if (basePath && ctx.key.startsWith(basePath + ".")) {
+			let _baseDepthOffset = 0
+
+			if (basePath && ctx.key.startsWith(`${basePath}.`)) {
 				// Context is within the group's basePath
 				const relativePath = ctx.key.substring(basePath.length + 1)
 				displaySegments = relativePath.split(".")
@@ -368,24 +368,24 @@ function formatContextItems(
 				// Context is outside the group's basePath
 				// Find common ancestor with basePath
 				const commonPrefix = basePath ? getCommonPrefix(basePath, ctx.key) : ""
-				
+
 				if (commonPrefix) {
 					// Show relative to common ancestor
 					const relativePath = ctx.key.substring(commonPrefix.length + 1)
 					displaySegments = relativePath.split(".")
 					// Adjust depth based on common prefix
-					baseDepthOffset = -basePath.split(".").length + commonPrefix.split(".").length + 1
+					_baseDepthOffset = -basePath!.split(".").length + commonPrefix.split(".").length + 1
 				} else {
 					// No common prefix, use full path
 					displaySegments = ctx.key.split(".")
-					baseDepthOffset = -baseIndent.length / 2 + 2
+					_baseDepthOffset = -baseIndent.length / 2 + 2
 				}
 			}
-			
+
 			// Calculate how many lines this will take (parent paths + final value)
 			let linesNeeded = 0
 			let testPath = basePath || ""
-			
+
 			// Count lines needed for parent paths
 			for (let i = 0; i < displaySegments.length - 1; i++) {
 				const segment = displaySegments[i]
@@ -398,7 +398,7 @@ function formatContextItems(
 			}
 			// Plus one for the actual value
 			linesNeeded++
-			
+
 			// Only show if we have enough lines left
 			if (linesUsed + linesNeeded <= maxLinesToShow) {
 				// Show parent hierarchy
@@ -417,14 +417,17 @@ function formatContextItems(
 						}
 					}
 				}
-				
+
 				// Show the actual value
 				const lastSegment = displaySegments[displaySegments.length - 1] || ""
 				// Calculate absolute depth for the value
-				const fullPath = basePath && ctx.key.startsWith(basePath + ".") 
-					? ctx.key 
-					: (basePath ? `${basePath}.${displaySegments.join(".")}` : displaySegments.join("."))
-				const absoluteValueDepth = fullPath.split(".").filter(s => s).length - 1
+				const fullPath =
+					basePath && ctx.key.startsWith(`${basePath}.`)
+						? ctx.key
+						: basePath
+							? `${basePath}.${displaySegments.join(".")}`
+							: displaySegments.join(".")
+				const absoluteValueDepth = fullPath.split(".").filter((s) => s).length - 1
 				const valueIndent = indent.repeat(Math.max(0, absoluteValueDepth))
 				output.push(`  \x1b[90m${valueIndent}${lastSegment}: ${formatValue(ctx.value)}\x1b[0m`)
 				linesUsed++
@@ -437,7 +440,7 @@ function getCommonPrefix(path1: string, path2: string): string {
 	const segments1 = path1.split(".")
 	const segments2 = path2.split(".")
 	const common: string[] = []
-	
+
 	for (let i = 0; i < Math.min(segments1.length, segments2.length); i++) {
 		if (segments1[i] === segments2[i]) {
 			common.push(segments1[i] as string)
@@ -445,7 +448,7 @@ function getCommonPrefix(path1: string, path2: string): string {
 			break
 		}
 	}
-	
+
 	return common.join(".")
 }
 
@@ -494,7 +497,7 @@ function formatGroupedDiff(group: DiffGroup): string {
 
 	// Calculate base depth from basePath
 	const baseDepth = group.basePath ? group.basePath.split(".").length : 0
-	
+
 	// Render tree with proper indentation
 	const renderTree = (node: TreeNode, depth: number = 0, parentPath: string = ""): void => {
 		// Use absolute depth (basePath depth + relative depth)
@@ -511,7 +514,15 @@ function formatGroupedDiff(group: DiffGroup): string {
 				if (diff.context?.before.length) {
 					// Pass context size (number of lines to show)
 					const contextSize = diff.context.before.length
-					formatContextItems(diff.context.before, diff.path, output, nodeIndent, group.diffs, group.basePath, contextSize)
+					formatContextItems(
+						diff.context.before,
+						diff.path,
+						output,
+						nodeIndent,
+						group.diffs,
+						group.basePath,
+						contextSize,
+					)
 				}
 
 				// Show the diff
@@ -533,7 +544,15 @@ function formatGroupedDiff(group: DiffGroup): string {
 				if (diff.context?.after.length) {
 					// Pass context size (number of lines to show)
 					const contextSize = diff.context.after.length
-					formatContextItems(diff.context.after, diff.path, output, nodeIndent, group.diffs, group.basePath, contextSize)
+					formatContextItems(
+						diff.context.after,
+						diff.path,
+						output,
+						nodeIndent,
+						group.diffs,
+						group.basePath,
+						contextSize,
+					)
 				}
 			} else if (child.children.size > 0) {
 				// This is an intermediate node with children
