@@ -1,4 +1,5 @@
-data.config.yaml  (v1/ConfigMap/default/app-config)
+
+data.config.yaml
   ± value change in multiline text (three inserts, two deletions)
       server:
     -   host: localhost
@@ -12,10 +13,12 @@ data.config.yaml  (v1/ConfigMap/default/app-config)
     +   level: info
 
 
-data.script.sh  (v1/ConfigMap/default/app-config)
+data.script.sh
   ± value change in multiline text (one insert, no deletions)
       #!/bin/bash
       echo "Starting application"
       export PORT=8080
     + export ENV=production
       exec java -jar app.jar
+
+
