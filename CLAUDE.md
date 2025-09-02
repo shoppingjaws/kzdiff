@@ -17,6 +17,7 @@ bun test
 bun test cli.test.ts
 bun test diff.test.ts
 bun test kustomize.test.ts
+bun test src/yaml-diff/index.test.ts
 
 # Run unit tests only (excluding CLI integration tests)
 bun test:unit
@@ -61,12 +62,14 @@ The codebase consists of focused modules:
 - **kustomize.ts**: Handles Kustomize builds using remote URL syntax for Git references
 - **diff.ts**: Wraps the system `diff` command with color support and fallback options
 - **debug.ts**: Provides conditional debug logging controlled by verbose flag
+- **src/yaml-diff/**: Custom YAML diff implementation that mimics dyff output format for Kubernetes resources
 
 Key implementation details:
 - Uses Kustomize's native remote URL support (`https://github.com/owner/repo//path?ref=branch`)
 - Temporary directory management for build outputs
 - Auto-detects default branch when no ref is specified
 - Handles non-existent remote directories gracefully (creates empty file)
+- yaml-diff module provides dyff-compatible output format for better readability
 
 ## Tool Requirements
 
