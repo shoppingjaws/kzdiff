@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { yamlDiff } from "../src/yaml-diff"
+import { yamlDiff } from "./index"
 
 describe("yamlDiff", () => {
 	// Get all test case directories
-	const fixturesDir = join(__dirname, "yaml-diff")
+	const fixturesDir = join(__dirname, "integration-test")
 	const testCases = readdirSync(fixturesDir, { withFileTypes: true })
 		.filter((dirent) => dirent.isDirectory() && dirent.name.startsWith("case_"))
 		.map((dirent) => dirent.name)
