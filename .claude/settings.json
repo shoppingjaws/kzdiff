@@ -9,9 +9,7 @@
 			"Bash(bun format:check)",
 			"Bash(dyff)"
 		],
-		"deny": [
-			"Edit(package.json)"
-		]
+		"deny": ["Edit(package.json)"]
 	},
 	"hooks": {
 		"PostToolUse": [
