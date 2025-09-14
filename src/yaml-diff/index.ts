@@ -6,10 +6,6 @@ import { orderMetadata, orderSpec } from "./yaml-diff.ordering"
 import { compareObjects } from "./yaml-diff.compare-objects"
 import { DOCUMENT_FIELD_ORDER, YAML_DUMP_OPTIONS } from "./yaml-diff.constants"
 
-
-
-
-
 // Main diff function
 export function yamlDiff(oldYaml: string, newYaml: string, _options: YamlDiffOptions = {}): string {
 	const oldDocs = parseYamlDocuments(oldYaml)

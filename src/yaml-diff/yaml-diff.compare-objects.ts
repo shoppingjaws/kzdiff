@@ -43,7 +43,17 @@ export function compareObjects(
 	handleAddedKeys(addedKeys, newObj, path, resourceKey, includeResourceKey, output)
 
 	// Then handle modifications (in order they appear in new object)
-	handleModifiedKeys(modifiedKeys, oldObj, newObj, oldKeysSet, newKeysSet, path, resourceKey, includeResourceKey, output)
+	handleModifiedKeys(
+		modifiedKeys,
+		oldObj,
+		newObj,
+		oldKeysSet,
+		newKeysSet,
+		path,
+		resourceKey,
+		includeResourceKey,
+		output,
+	)
 
 	// Finally handle removals (but check for side-by-side presentation)
 	handleRemovedKeys(removedKeys, oldObj, path, resourceKey, includeResourceKey, output)
@@ -174,16 +184,7 @@ function handleArrayChanges(
 
 		// Handle additions and removals first (before modifications)
 		if (removed.length > 0 || added.length > 0) {
-			handleArrayAdditionsAndRemovals(
-				key,
-				oldVal,
-				removed,
-				added,
-				path,
-				resourceKey,
-				includeResourceKey,
-				output,
-			)
+			handleArrayAdditionsAndRemovals(key, oldVal, removed, added, path, resourceKey, includeResourceKey, output)
 		}
 
 		// Then handle modified items in arrays (like volumes with same name but different config)
@@ -230,8 +231,7 @@ function handleArrayAdditionsAndRemovals(
 
 	if (removed.length > 0 && added.length > 0) {
 		// Both additions and removals
-		const removedStr =
-			removed.length === 1 ? "one list entry removed:" : `${removed.length} list entries removed:`
+		const removedStr = removed.length === 1 ? "one list entry removed:" : `${removed.length} list entries removed:`
 		const addedStr =
 			added.length === 1
 				? "one list entry added:"
@@ -279,8 +279,7 @@ function handleArrayAdditionsAndRemovals(
 			}
 		}
 	} else if (removed.length > 0) {
-		const removedStr =
-			removed.length === 1 ? "one list entry removed:" : `${removed.length} list entries removed:`
+		const removedStr = removed.length === 1 ? "one list entry removed:" : `${removed.length} list entries removed:`
 		output.push(`  - ${removedStr}`)
 		for (const item of removed) {
 			if (typeof item === "object") {
