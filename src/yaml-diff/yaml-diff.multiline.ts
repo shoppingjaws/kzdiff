@@ -25,10 +25,12 @@ export function handleMultilineTextDiff(
 	// Find lines that were deleted (in old but not in new)
 	for (let i = 0; i < oldLines.length; i++) {
 		const oldLine = oldLines[i]
+		if (!oldLine) continue
 		// Check if this exact line exists in new
 		if (!newLines.includes(oldLine)) {
 			// Check if this is a value change (same key, different value)
 			const oldKey = oldLine.split(":")[0]
+			if (!oldKey) continue
 			const hasKeyInNew = oldKey.includes(":")
 				? false
 				: newLines.some((nl: string) => nl.split(":")[0] === oldKey && nl.includes(":"))
@@ -46,10 +48,12 @@ export function handleMultilineTextDiff(
 	// Find lines that were inserted (in new but not in old)
 	for (let i = 0; i < newLines.length; i++) {
 		const newLine = newLines[i]
+		if (!newLine) continue
 		// Check if this exact line exists in old
 		if (!oldLines.includes(newLine)) {
 			// Check if this is a value change (same key, different value)
 			const newKey = newLine.split(":")[0]
+			if (!newKey) continue
 			const hasKeyInOld = newKey.includes(":")
 				? false
 				: oldLines.some((ol: string) => ol.split(":")[0] === newKey && ol.includes(":"))

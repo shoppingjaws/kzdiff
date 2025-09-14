@@ -1,6 +1,12 @@
 {
 	"permissions": {
-		"allow": ["Bash(bun run lint)", "Bash(bun run format)"]
+		"allow": [
+			"Bash(biome lint --fix)",
+			"Bash(tsc --noEmit)",
+			"Bash(biome lint)",
+			"Bash(biome format --write)",
+			"Bash(dyff)"
+		]
 	},
 	"hooks": {
 		"PostToolUse": [
