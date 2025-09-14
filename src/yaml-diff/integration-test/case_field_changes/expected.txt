@@ -1,0 +1,50 @@
+
+metadata  (v1/ConfigMap/default/app-config)
+  + one map entry added:
+    labels:
+      app: myapp
+      environment: production
+
+data  (v1/ConfigMap/default/app-config)
+  + one map entry added:
+    max_connections: 100
+
+data.database_host  (v1/ConfigMap/default/app-config)
+  ± value change
+    - localhost
+    + db.example.com
+
+data.database_port  (v1/ConfigMap/default/app-config)
+  ± value change
+    - 5432
+    + 3306
+
+data.cache_enabled  (v1/ConfigMap/default/app-config)
+  ± value change
+    - true
+    + false
+
+data.log_level  (v1/ConfigMap/default/app-config)
+  ± value change
+    - info
+    + debug
+
+metadata  (v1/Secret/default/app-secret)
+  + one map entry added:
+    annotations:
+      last-updated: 2024-01-01
+
+data  (v1/Secret/default/app-secret)
+  + one map entry added:
+    jwt_secret: and0U2VjcmV0S2V5
+
+data.api_key  (v1/Secret/default/app-secret)
+  ± value change
+    - YWJjZGVmZ2hpams=
+    + eHl6MTIzNDU2Nzg5
+
+data.database_password  (v1/Secret/default/app-secret)
+  ± value change
+    - cGFzc3dvcmQxMjM=
+    + c2VjdXJlUGFzc3dvcmQ=
+

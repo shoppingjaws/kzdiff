@@ -1,0 +1,13 @@
+
+(root level)  (v1/Secret/default/app-secret)
+- one document removed:
+  ---
+  type: Opaque
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: app-secret
+    namespace: default
+  data:
+    password: cGFzc3dvcmQ=
+

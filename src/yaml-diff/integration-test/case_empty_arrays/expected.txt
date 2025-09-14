@@ -1,0 +1,11 @@
+
+spec.template.spec.containers.app.env
+  + one list entry added:
+    - name: DEBUG
+      value: "true"
+
+spec.template.spec.containers.app.volumeMounts
+  + one list entry added:
+    - name: config
+      mountPath: /etc/config
+

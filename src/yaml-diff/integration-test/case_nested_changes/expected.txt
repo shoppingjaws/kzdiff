@@ -1,0 +1,53 @@
+
+spec.replicas
+  ± value change
+    - 2
+    + 3
+
+spec.template.metadata.labels
+  + one map entry added:
+    version: v2
+
+spec.template.spec.containers.app
+  + one map entry added:
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+      initialDelaySeconds: 30
+
+spec.template.spec.containers.app.image
+  ± value change
+    - myapp:v1.0
+    + myapp:v2.0
+
+spec.template.spec.containers.app.env
+  + one list entry added:
+    - name: CACHE_ENABLED
+      value: "true"
+
+spec.template.spec.containers.app.env.DATABASE_HOST.value
+  ± value change
+    - localhost
+    + prod-db.example.com
+
+spec.template.spec.containers.app.resources.limits.memory
+  ± value change
+    - 512Mi
+    + 1Gi
+
+spec.template.spec.containers.app.resources.limits.cpu
+  ± value change
+    - 500m
+    + 1000m
+
+spec.template.spec.containers.app.resources.requests.memory
+  ± value change
+    - 256Mi
+    + 512Mi
+
+spec.template.spec.containers.app.resources.requests.cpu
+  ± value change
+    - 250m
+    + 500m
+

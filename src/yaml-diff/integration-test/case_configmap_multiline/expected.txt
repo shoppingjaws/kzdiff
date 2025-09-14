@@ -1,0 +1,24 @@
+
+data.config.yaml
+  ± value change in multiline text (three inserts, two deletions)
+      server:
+    -   host: localhost
+    +   host: 0.0.0.0
+        port: 8080
+      database:
+    -   host: db.example.com
+    +   host: prod-db.example.com
+        port: 5432
+    + logging:
+    +   level: info
+
+
+data.script.sh
+  ± value change in multiline text (one insert, no deletions)
+      #!/bin/bash
+      echo "Starting application"
+      export PORT=8080
+    + export ENV=production
+      exec java -jar app.jar
+
+
