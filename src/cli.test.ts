@@ -59,8 +59,8 @@ describe("kzdiff CLI", () => {
 			expect(stdout).toContain("Building local version...")
 			expect(stdout).toContain(`Building remote version (${TEST_COMMIT})...`)
 			expect(stdout).toContain(`Showing diff between ${TEST_COMMIT} and local changes:`)
-			// The commit has different content, so we expect to see diff output (JSON format)
-			expect(stdout).toContain("● Deployment")
+			// The commit has different content, so we expect to see diff output (dyff format)
+			expect(stdout).toContain("metadata.labels")
 
 			// Current version has additional team label that doesn't exist in test commit
 			expect(stdout).toContain("team: platform")
@@ -156,9 +156,9 @@ describe("kzdiff CLI", () => {
 			// Compare with the test commit which has different content
 			const { stdout } = await runCLI([EXAMPLE_PATH, "-r", TEST_COMMIT, "-v"])
 
-			// Should show diff output (JSON format)
-			expect(stdout).toContain("● Deployment")
-			expect(stdout).toContain("● Service")
+			// Should show diff output (dyff format)
+			expect(stdout).toContain("metadata.labels")
+			expect(stdout).toContain("v1/Service")
 			expect(stdout).toContain("team: platform")
 		})
 

@@ -4,7 +4,7 @@ import { $ } from "bun"
 import { kustomizeBuildToTmp } from "./kustomize"
 import { createDebugLogger, setVerbose } from "./debug"
 import { filterYaml } from "./filter"
-import { jsonDiff } from "./json-diff"
+import { yamlDiff } from "./yaml-diff"
 import { readFile } from "node:fs/promises"
 
 const debug = createDebugLogger("kzdiff-cli")
@@ -188,10 +188,10 @@ Note: When using commit hashes, use the full 40-character SHA`
 		debug(`\nShowing diff between ${remoteRef} and local changes:`)
 		debug("=".repeat(80))
 
-		// Use JSON-based diff for better structured output
+		// Use YAML-based diff for better structured output
 		const oldContent = await readFile(remotePath, "utf-8")
 		const newContent = await readFile(localPath, "utf-8")
-		const diffOutput = jsonDiff(oldContent, newContent)
+		const diffOutput = yamlDiff(oldContent, newContent)
 		console.log(diffOutput)
 	} catch (error) {
 		console.error("Error:", error)

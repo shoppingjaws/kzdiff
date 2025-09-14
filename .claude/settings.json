@@ -1,11 +1,16 @@
 {
 	"permissions": {
 		"allow": [
-			"Bash(biome lint --fix)",
-			"Bash(tsc --noEmit)",
-			"Bash(biome lint)",
-			"Bash(biome format --write)",
+			"Bash(bun test:*)",
+			"Bash(bun typecheck)",
+			"Bash(bun lint:check)",
+			"Bash(bun lint)",
+			"Bash(bun format)",
+			"Bash(bun format:check)",
 			"Bash(dyff)"
+		],
+		"deny": [
+			"Edit(package.json)"
 		]
 	},
 	"hooks": {
