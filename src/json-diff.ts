@@ -89,7 +89,7 @@ function flattenObject(obj: YamlValue, prefix = "", result: Record<string, FlatV
 function getContext(
 	flatObj: Record<string, FlatValue>,
 	path: string,
-	contextSize: number,
+	contextSize = 2,
 ): {
 	before: Array<{ key: string; value: FlatValue }>
 	after: Array<{ key: string; value: FlatValue }>
@@ -123,7 +123,7 @@ function getContext(
 	return { before, after }
 }
 
-function compareResources(oldResource: K8sResource, newResource: K8sResource, contextSize: number): DiffResult[] {
+function compareResources(oldResource: K8sResource, newResource: K8sResource): DiffResult[] {
 	const diffs: DiffResult[] = []
 	const oldFlat = flattenObject(oldResource)
 	const newFlat = flattenObject(newResource)
@@ -136,14 +136,14 @@ function compareResources(oldResource: K8sResource, newResource: K8sResource, co
 				path: key,
 				type: "added",
 				newValue: newFlat[key],
-				context: getContext(newFlat, key, contextSize),
+				context: getContext(newFlat, key),
 			})
 		} else if (!(key in newFlat)) {
 			diffs.push({
 				path: key,
 				type: "removed",
 				oldValue: oldFlat[key],
-				context: getContext(oldFlat, key, contextSize),
+				context: getContext(oldFlat, key),
 			})
 		} else if (JSON.stringify(oldFlat[key]) !== JSON.stringify(newFlat[key])) {
 			diffs.push({
@@ -151,7 +151,7 @@ function compareResources(oldResource: K8sResource, newResource: K8sResource, co
 				type: "modified",
 				oldValue: oldFlat[key],
 				newValue: newFlat[key],
-				context: getContext(newFlat, key, contextSize),
+				context: getContext(newFlat, key),
 			})
 		}
 	}
@@ -311,147 +311,6 @@ function findOptimalBasePath(paths: string[]): string {
 	return commonParts.join(".")
 }
 
-function formatContextItems(
-	contexts: Array<{ key: string; value: FlatValue }>,
-	diffPath: string,
-	output: string[],
-	baseIndent: string,
-	diffs: DiffResult[],
-	basePath: string | undefined,
-	maxLines?: number,
-): void {
-	// Skip if no contexts
-	if (contexts.length === 0) return
-
-	const indent = "  "
-	let linesUsed = 0
-	const maxLinesToShow = maxLines || contexts.length
-
-	// Get the parent path of the diff
-	const diffSegments = diffPath.split(".")
-	const diffParent = diffSegments.slice(0, -1).join(".")
-
-	// Track which parent paths we've already shown
-	const shownParents = new Set<string>()
-
-	for (const ctx of contexts) {
-		// Stop if we've reached the line limit
-		if (linesUsed >= maxLinesToShow) break
-
-		// Skip if this is another diff that will be shown separately
-		if (diffs.some((d) => d.path === ctx.key)) {
-			continue
-		}
-
-		// Get context segments
-		const ctxSegments = ctx.key.split(".")
-		const ctxParent = ctxSegments.slice(0, -1).join(".")
-
-		// Check if this is a sibling (same parent)
-		if (ctxParent === diffParent) {
-			// Simple sibling - just show the key at the same level
-			const lastSegment = ctxSegments[ctxSegments.length - 1] || ""
-			// baseIndent already contains the correct absolute depth
-			output.push(`  \x1b[90m${baseIndent}${lastSegment}: ${formatValue(ctx.value)}\x1b[0m`)
-			linesUsed++
-		} else {
-			// Different parent - need to show hierarchy
-			// Determine the display path based on relationship to basePath
-			let displaySegments: string[]
-			let _baseDepthOffset = 0
-
-			if (basePath && ctx.key.startsWith(`${basePath}.`)) {
-				// Context is within the group's basePath
-				const relativePath = ctx.key.substring(basePath.length + 1)
-				displaySegments = relativePath.split(".")
-			} else {
-				// Context is outside the group's basePath
-				// Find common ancestor with basePath
-				const commonPrefix = basePath ? getCommonPrefix(basePath, ctx.key) : ""
-
-				if (commonPrefix) {
-					// Show relative to common ancestor
-					const relativePath = ctx.key.substring(commonPrefix.length + 1)
-					displaySegments = relativePath.split(".")
-					// Adjust depth based on common prefix
-					_baseDepthOffset = -basePath!.split(".").length + commonPrefix.split(".").length + 1
-				} else {
-					// No common prefix, use full path
-					displaySegments = ctx.key.split(".")
-					_baseDepthOffset = -baseIndent.length / 2 + 2
-				}
-			}
-
-			// Calculate how many lines this will take (parent paths + final value)
-			let linesNeeded = 0
-			let testPath = basePath || ""
-
-			// Count lines needed for parent paths
-			for (let i = 0; i < displaySegments.length - 1; i++) {
-				const segment = displaySegments[i]
-				if (segment) {
-					testPath = testPath ? `${testPath}.${segment}` : segment
-					if (!shownParents.has(testPath)) {
-						linesNeeded++
-					}
-				}
-			}
-			// Plus one for the actual value
-			linesNeeded++
-
-			// Only show if we have enough lines left
-			if (linesUsed + linesNeeded <= maxLinesToShow) {
-				// Show parent hierarchy
-				let currentPath = basePath || ""
-				for (let i = 0; i < displaySegments.length - 1; i++) {
-					const segment = displaySegments[i]
-					if (segment) {
-						currentPath = currentPath ? `${currentPath}.${segment}` : segment
-						if (!shownParents.has(currentPath)) {
-							// Use absolute depth calculation
-							const absoluteDepth = currentPath.split(".").length
-							const parentIndent = indent.repeat(absoluteDepth)
-							output.push(`  \x1b[90m${parentIndent}${segment}:\x1b[0m`)
-							shownParents.add(currentPath)
-							linesUsed++
-						}
-					}
-				}
-
-				// Show the actual value
-				const lastSegment = displaySegments[displaySegments.length - 1] || ""
-				// Calculate absolute depth for the value
-				const fullPath =
-					basePath && ctx.key.startsWith(`${basePath}.`)
-						? ctx.key
-						: basePath
-							? `${basePath}.${displaySegments.join(".")}`
-							: displaySegments.join(".")
-				const absoluteValueDepth = fullPath.split(".").filter((s) => s).length - 1
-				const valueIndent = indent.repeat(Math.max(0, absoluteValueDepth))
-				output.push(`  \x1b[90m${valueIndent}${lastSegment}: ${formatValue(ctx.value)}\x1b[0m`)
-				linesUsed++
-			}
-		}
-	}
-}
-
-function getCommonPrefix(path1: string, path2: string): string {
-	const segments1 = path1.split(".")
-	const segments2 = path2.split(".")
-	const common: string[] = []
-
-	for (let i = 0; i < Math.min(segments1.length, segments2.length); i++) {
-		if (segments1[i] === segments2[i]) {
-			common.push(segments1[i] as string)
-		} else {
-			break
-		}
-	}
-
-	return common.join(".")
-}
-
 function formatGroupedDiff(group: DiffGroup): string {
 	const output: string[] = []
 	const indent = "  "
@@ -495,13 +354,9 @@ function formatGroupedDiff(group: DiffGroup): string {
 		current.diff = diff
 	}
 
-	// Calculate base depth from basePath
-	const baseDepth = group.basePath ? group.basePath.split(".").length : 0
-
 	// Render tree with proper indentation
 	const renderTree = (node: TreeNode, depth: number = 0, parentPath: string = ""): void => {
-		// Use absolute depth (basePath depth + relative depth)
-		const nodeIndent = indent.repeat(baseDepth + depth)
+		const nodeIndent = indent.repeat(depth + 2)
 
 		for (const [key, child] of node.children) {
 			const fullPath = parentPath ? `${parentPath}.${key}` : key
@@ -512,17 +367,25 @@ function formatGroupedDiff(group: DiffGroup): string {
 
 				// Show context before
 				if (diff.context?.before.length) {
-					// Pass context size (number of lines to show)
-					const contextSize = diff.context.before.length
-					formatContextItems(
-						diff.context.before,
-						diff.path,
-						output,
-						nodeIndent,
-						group.diffs,
-						group.basePath,
-						contextSize,
-					)
+					for (const ctx of diff.context.before) {
+						// Only show context items that are siblings of the current diff
+						const ctxParts = ctx.key.split(".")
+						const diffParts = diff.path.split(".")
+
+						// Check if they're siblings (same parent, same depth)
+						if (ctxParts.length === diffParts.length) {
+							const ctxParent = ctxParts.slice(0, -1).join(".")
+							const diffParent = diffParts.slice(0, -1).join(".")
+
+							if (ctxParent === diffParent) {
+								const ctxKey = ctxParts[ctxParts.length - 1]
+								// Skip if this is another diff
+								if (ctxKey && !group.diffs.some((d) => d.path === ctx.key)) {
+									output.push(`  \x1b[90m${nodeIndent}${ctxKey}: ${formatValue(ctx.value)}\x1b[0m`)
+								}
+							}
+						}
+					}
 				}
 
 				// Show the diff
@@ -535,24 +398,32 @@ function formatGroupedDiff(group: DiffGroup): string {
 						break
 					case "modified":
 						output.push(`  ${nodeIndent}${key}:`)
-						output.push(`\x1b[31m- ${indent.repeat(baseDepth + depth + 1)}${formatValue(diff.oldValue)}\x1b[0m`)
-						output.push(`\x1b[32m+ ${indent.repeat(baseDepth + depth + 1)}${formatValue(diff.newValue)}\x1b[0m`)
+						output.push(`\x1b[31m- ${indent.repeat(depth + 3)}${formatValue(diff.oldValue)}\x1b[0m`)
+						output.push(`\x1b[32m+ ${indent.repeat(depth + 3)}${formatValue(diff.newValue)}\x1b[0m`)
 						break
 				}
 
 				// Show context after
 				if (diff.context?.after.length) {
-					// Pass context size (number of lines to show)
-					const contextSize = diff.context.after.length
-					formatContextItems(
-						diff.context.after,
-						diff.path,
-						output,
-						nodeIndent,
-						group.diffs,
-						group.basePath,
-						contextSize,
-					)
+					for (const ctx of diff.context.after) {
+						// Only show context items that are siblings of the current diff
+						const ctxParts = ctx.key.split(".")
+						const diffParts = diff.path.split(".")
+
+						// Check if they're siblings (same parent, same depth)
+						if (ctxParts.length === diffParts.length) {
+							const ctxParent = ctxParts.slice(0, -1).join(".")
+							const diffParent = diffParts.slice(0, -1).join(".")
+
+							if (ctxParent === diffParent) {
+								const ctxKey = ctxParts[ctxParts.length - 1]
+								// Skip if this is another diff
+								if (ctxKey && !group.diffs.some((d) => d.path === ctx.key)) {
+									output.push(`  \x1b[90m${nodeIndent}${ctxKey}: ${formatValue(ctx.value)}\x1b[0m`)
+								}
+							}
+						}
+					}
 				}
 			} else if (child.children.size > 0) {
 				// This is an intermediate node with children
@@ -595,7 +466,7 @@ function formatDiff(resource: K8sResource, diffs: DiffResult[]): string {
 	return output.join("\n")
 }
 
-export function jsonDiff(oldContent: string, newContent: string, contextSize = 2): string {
+export function jsonDiff(oldContent: string, newContent: string): string {
 	const oldResources = parseYAML(oldContent)
 	const newResources = parseYAML(newContent)
 
@@ -638,7 +509,7 @@ export function jsonDiff(oldContent: string, newContent: string, contextSize = 2
 			output.push(`  \x1b[36mname:\x1b[0m ${oldResource.metadata?.name || "unnamed"}`)
 			output.push("")
 		} else if (oldResource && newResource) {
-			const diffs = compareResources(oldResource, newResource, contextSize)
+			const diffs = compareResources(oldResource, newResource)
 			if (diffs.length > 0) {
 				hasChanges = true
 				output.push(formatDiff(newResource, diffs))
