@@ -20,7 +20,6 @@ async function main() {
 Options:
   -b, --branch <ref>       Remote branch or commit to compare against
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
-  -c, --context <lines>    Number of context lines to show (default: 2)
   -f, --filter <expr>      Filter resources using JSONPath expressions (can be specified multiple times)
   -h, --help               Show this help message
   -v, --verbose            Enable verbose debug logging
@@ -73,7 +72,6 @@ Note: When using commit hashes, use the full 40-character SHA`
 	let remoteRef: string | null = null
 	let kustomizeOptions: string[] = []
 	let verbose = false
-	let contextLines = 2
 	const filterOptions: string[] = []
 
 	// Parse arguments
@@ -84,20 +82,6 @@ Note: When using commit hashes, use the full 40-character SHA`
 				i++ // Skip next argument
 			} else {
 				console.error(`Error: ${args[i]} requires a branch name or commit hash`)
-				process.exit(1)
-			}
-		} else if (args[i] === "-c" || args[i] === "--context") {
-			const nextArg = args[i + 1]
-			if (i + 1 < args.length && nextArg !== undefined) {
-				const lines = parseInt(nextArg, 10)
-				if (Number.isNaN(lines) || lines < 0) {
-					console.error(`Error: ${args[i]} requires a positive number`)
-					process.exit(1)
-				}
-				contextLines = lines
-				i++ // Skip next argument
-			} else {
-				console.error(`Error: ${args[i]} requires a number of lines`)
 				process.exit(1)
 			}
 		} else if (args[i] === "-f" || args[i] === "--filter") {
@@ -207,7 +191,7 @@ Note: When using commit hashes, use the full 40-character SHA`
 		// Use JSON-based diff for better structured output
 		const oldContent = await readFile(remotePath, "utf-8")
 		const newContent = await readFile(localPath, "utf-8")
-		const diffOutput = jsonDiff(oldContent, newContent, contextLines)
+		const diffOutput = jsonDiff(oldContent, newContent)
 		console.log(diffOutput)
 	} catch (error) {
 		console.error("Error:", error)
