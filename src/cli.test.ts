@@ -59,7 +59,7 @@ describe("kzdiff CLI", () => {
 			expect(stdout).toContain("Building local version...")
 			expect(stdout).toContain(`Building remote version (${TEST_COMMIT})...`)
 			expect(stdout).toContain(`Showing diff between ${TEST_COMMIT} and local changes:`)
-			// The commit has different content, so we expect to see diff output (YAML format)
+			// The commit has different content, so we expect to see diff output (dyff format)
 			expect(stdout).toContain("metadata.labels")
 
 			// Current version has additional team label that doesn't exist in test commit
