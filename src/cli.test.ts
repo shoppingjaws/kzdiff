@@ -156,9 +156,9 @@ describe("kzdiff CLI", () => {
 			// Compare with the test commit which has different content
 			const { stdout } = await runCLI([EXAMPLE_PATH, "-r", TEST_COMMIT, "-v"])
 
-			// Should show diff output (dyff format)
+			// Should show diff output (YAML format)
 			expect(stdout).toContain("metadata.labels")
-			expect(stdout).toContain("v1/Service")
+			expect(stdout).toContain("spec.selector")
 			expect(stdout).toContain("team: platform")
 		})
 

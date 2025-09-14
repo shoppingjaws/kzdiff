@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 
+import { readFile } from "node:fs/promises"
 import { $ } from "bun"
-import { kustomizeBuildToTmp } from "./kustomize"
 import { createDebugLogger, setVerbose } from "./debug"
 import { filterYaml } from "./filter"
+import { kustomizeBuildToTmp } from "./kustomize"
 import { yamlDiff } from "./yaml-diff"
-import { readFile } from "node:fs/promises"
 
 const debug = createDebugLogger("kzdiff-cli")
 

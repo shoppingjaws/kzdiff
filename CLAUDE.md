@@ -60,9 +60,9 @@ The codebase consists of focused modules:
 
 - **cli.ts**: CLI entry point that handles argument parsing, Git operations, and orchestrates the diff process
 - **kustomize.ts**: Handles Kustomize builds using remote URL syntax for Git references
-- **diff.ts**: Wraps the system `diff` command with color support and fallback options
 - **debug.ts**: Provides conditional debug logging controlled by verbose flag
-- **src/yaml-diff/**: Custom YAML diff implementation that mimics dyff output format for Kubernetes resources
+- **filter.ts**: Filters YAML resources using JSONPath expressions
+- **yaml-diff/**: Custom YAML diff implementation that mimics dyff output format for Kubernetes resources
 
 Key implementation details:
 - Uses Kustomize's native remote URL support (`https://github.com/owner/repo//path?ref=branch`)
@@ -70,6 +70,7 @@ Key implementation details:
 - Auto-detects default branch when no ref is specified
 - Handles non-existent remote directories gracefully (creates empty file)
 - yaml-diff module provides dyff-compatible output format for better readability
+- JSONPath-based filtering for selective resource comparison
 
 ## Tool Requirements
 
