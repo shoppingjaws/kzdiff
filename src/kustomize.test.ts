@@ -1,11 +1,18 @@
-import { describe, expect, test } from "bun:test"
+import { beforeAll, describe, expect, test } from "bun:test"
 import { stat } from "node:fs/promises"
 import { join } from "node:path"
 import { kustomizeBuildToTmp } from "./kustomize"
 import { $ } from "bun"
+import { ensureLocalGitRemoteForTests, TEST_MAIN_COMMIT } from "./test-utils/git"
 
 // Test comment to trigger hook
 describe("kustomizeBuildToTmp", () => {
+	let localRemote: string
+
+	beforeAll(async () => {
+		localRemote = await ensureLocalGitRemoteForTests(TEST_MAIN_COMMIT)
+	})
+
 	test("should build kustomize and save as before.yaml", async () => {
 		const kustomizePath = join(process.cwd(), "examples/overlays/prod")
 		const outputPath = await kustomizeBuildToTmp(kustomizePath, "before.yaml")
@@ -64,12 +71,9 @@ describe("kustomizeBuildToTmp", () => {
 
 	test("should build from remote branch using Kustomize native support", async () => {
 		// Get the current remote URL
-		const remoteUrl = await $`git config --get remote.origin.url`.text()
-		const remote = remoteUrl.trim()
-
 		const outputPath = await kustomizeBuildToTmp("examples/overlays/prod", "after.yaml", undefined, {
 			ref: "main",
-			remote,
+			remote: localRemote,
 		})
 
 		// Check if file exists
@@ -103,13 +107,13 @@ describe("kustomizeBuildToTmp", () => {
 
 	test("should return empty file when remote directory does not exist", async () => {
 		// Get the current remote URL
-		const remoteUrl = await $`git config --get remote.origin.url`.text()
-		const remote = remoteUrl.trim()
-
 		// Use a non-existent directory path
 		const nonExistentPath = "this/directory/does/not/exist"
 
-		const outputPath = await kustomizeBuildToTmp(nonExistentPath, "before.yaml", undefined, { ref: "main", remote })
+		const outputPath = await kustomizeBuildToTmp(nonExistentPath, "before.yaml", undefined, {
+			ref: "main",
+			remote: localRemote,
+		})
 
 		// Check if file exists
 		const stats = await stat(outputPath)
@@ -125,16 +129,13 @@ describe("kustomizeBuildToTmp", () => {
 
 	test("should return empty file when directory exists in current branch but not in comparison branch", async () => {
 		// Get the current remote URL
-		const remoteUrl = await $`git config --get remote.origin.url`.text()
-		const remote = remoteUrl.trim()
-
 		// Use examples/overlays/nothing which exists in current branch but not in 3b4d8b0121ac84d7678591d8139b6eb5f88061d6
 		const pathExistsNowButNotBefore = "examples/overlays/nothing"
 
 		// Try to build from an older commit where this directory doesn't exist
 		const outputPath = await kustomizeBuildToTmp(pathExistsNowButNotBefore, "before.yaml", undefined, {
 			ref: "3b4d8b0121ac84d7678591d8139b6eb5f88061d6",
-			remote,
+			remote: localRemote,
 		})
 
 		// Check if file exists

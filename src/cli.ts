@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { readFile } from "node:fs/promises"
+import { pathToFileURL } from "node:url"
 import { $ } from "bun"
 import { createDebugLogger, setVerbose } from "./debug"
 import { filterYaml } from "./filter"
@@ -46,7 +47,7 @@ Examples:
   ${progName} ./examples/overlays/prod -- --enable-helm
   ${progName} ./examples/overlays/prod -b staging -- --enable-helm
 
-Note: When using commit hashes, use the full 40-character SHA`
+Note: Short commit hashes are supported and will be resolved automatically`
 
 		console.log(helpText)
 		process.exit(exitCode)
@@ -120,43 +121,111 @@ Note: When using commit hashes, use the full 40-character SHA`
 	}
 
 	try {
-		// Get current git remote and branch
-		const remoteUrl = await $`git config --get remote.origin.url`.text()
-		const remote = remoteUrl.trim()
-		const currentBranch = await $`git rev-parse --abbrev-ref HEAD`.text()
-		const branch = currentBranch.trim()
+		const remoteUrlResult = await $`git config --get remote.origin.url`.quiet().nothrow()
+		let remote = ""
 
-		debug(`Remote: ${remote}`)
-		debug(`Current branch: ${branch}`)
+		if (remoteUrlResult.exitCode === 0) {
+			remote = remoteUrlResult.stdout.toString().trim()
+		}
+
+		if (!remote) {
+			const repoRootResult = await $`git rev-parse --show-toplevel`.quiet().nothrow()
+			if (repoRootResult.exitCode !== 0) {
+				console.error("Could not determine git repository root. Please run kzdiff inside a git repository.")
+				process.exit(1)
+			}
+
+			const repoRoot = repoRootResult.stdout.toString().trim()
+			remote = pathToFileURL(repoRoot).toString()
+			debug(`No remote.origin.url configured, using local repository: ${remote}`)
+		} else {
+			debug(`Remote: ${remote}`)
+		}
+
+		const currentBranchResult = await $`git rev-parse --abbrev-ref HEAD`.quiet().nothrow()
+		if (currentBranchResult.exitCode === 0) {
+			const branch = currentBranchResult.stdout.toString().trim()
+			if (branch && branch !== "HEAD") {
+				debug(`Current branch: ${branch}`)
+			}
+		}
+
+		const detectDefaultRef = async (): Promise<string | null> => {
+			const remoteHead = await $`git symbolic-ref refs/remotes/origin/HEAD`.quiet().nothrow()
+			if (remoteHead.exitCode === 0) {
+				return remoteHead.stdout.toString().trim().replace("refs/remotes/origin/", "")
+			}
+
+			const upstreamResult = await $`git rev-parse --abbrev-ref HEAD@{upstream}`.quiet().nothrow()
+			if (upstreamResult.exitCode === 0) {
+				const upstream = upstreamResult.stdout.toString().trim()
+				if (upstream && upstream !== "HEAD") {
+					return upstream
+				}
+			}
+
+			const currentBranch = await $`git rev-parse --abbrev-ref HEAD`.quiet().nothrow()
+			if (currentBranch.exitCode === 0) {
+				const branch = currentBranch.stdout.toString().trim()
+				if (branch && branch !== "HEAD") {
+					return branch
+				}
+			}
+
+			const commonDefaults = ["main", "master"]
+			for (const defaultBranch of commonDefaults) {
+				const localCheck = await $`git show-ref --verify --quiet refs/heads/${defaultBranch}`.quiet().nothrow()
+				if (localCheck.exitCode === 0) {
+					return defaultBranch
+				}
+			}
+
+			return null
+		}
 
 		// If no remote ref specified, get the default branch
 		if (!remoteRef) {
 			debug("No remote ref specified, detecting default branch...")
-			try {
-				// Try to get the default branch from remote
-				const defaultBranchResult = await $`git symbolic-ref refs/remotes/origin/HEAD`.text()
-				remoteRef = defaultBranchResult.trim().replace("refs/remotes/origin/", "")
-				debug(`Detected default branch: ${remoteRef}`)
-			} catch {
-				// Fallback: try common default branches
-				debug("Could not detect default branch from remote, trying common defaults...")
-				const commonDefaults = ["main", "master"]
-				for (const defaultBranch of commonDefaults) {
-					try {
-						const checkResult = await $`git ls-remote --heads origin ${defaultBranch}`.text()
-						if (checkResult.trim()) {
-							remoteRef = defaultBranch
-							debug(`Found default branch: ${remoteRef}`)
-							break
-						}
-					} catch {
-						// Continue to next
-					}
-				}
+			const detectedRef = await detectDefaultRef()
 
-				if (!remoteRef) {
-					console.error("Could not determine default remote branch. Please specify with -b or -r option.")
-					process.exit(1)
+			if (detectedRef) {
+				remoteRef = detectedRef
+				debug(`Detected default branch: ${remoteRef}`)
+			} else {
+				console.error("Could not determine default remote branch. Please specify with -b or -r option.")
+				process.exit(1)
+			}
+		}
+
+		if (remoteRef) {
+			const potentialShaPattern = /^[0-9a-fA-F]{7,40}$/
+			const isPotentialSha = potentialShaPattern.test(remoteRef)
+
+			if (isPotentialSha && remoteRef.length < 40) {
+				const branchCheck = await $`git show-ref --verify --quiet refs/heads/${remoteRef}`.quiet().nothrow()
+				const tagCheck = await $`git show-ref --verify --quiet refs/tags/${remoteRef}`.quiet().nothrow()
+
+				if (branchCheck.exitCode !== 0 && tagCheck.exitCode !== 0) {
+					const resolvedRef = await $`git rev-parse ${remoteRef}`.quiet().nothrow()
+
+					if (resolvedRef.exitCode === 0) {
+						const fullSha = resolvedRef.stdout.toString().trim()
+
+						if (fullSha.length === 40) {
+							debug(`Resolved short commit ${remoteRef} to full SHA ${fullSha}`)
+							remoteRef = fullSha
+						} else {
+							debug(`Resolved ref ${remoteRef} to ${fullSha}, but it is not a full 40-character SHA.`)
+						}
+					} else {
+						const errorMessage = resolvedRef.stderr?.toString().trim()
+
+						if (errorMessage) {
+							debug(`Failed to resolve short commit ${remoteRef}: ${errorMessage}`)
+						} else {
+							debug(`Failed to resolve short commit ${remoteRef}: exit code ${resolvedRef.exitCode}`)
+						}
+					}
 				}
 			}
 		}
