@@ -27,6 +27,12 @@ kzdiff ./overlays/production
 kzdiff ./overlays/production -b develop
 ```
 
+### Compare with a local branch (not pushed yet)
+
+```bash
+kzdiff ./overlays/production -b feature/my-working-branch
+```
+
 ### Filter specific resources
 
 ```bash
@@ -55,7 +61,7 @@ kzdiff ./overlays/production -f '$[?(@.metadata.labels.team=="platform")]'
 
 ## Options
 
-- `-b, --branch <ref>` - Remote branch or commit to compare against (default: auto-detect)
+- `-b, --branch <ref>` - Branch, commit, or ref to compare against (remote by default)
 - `-r, --ref <ref>` - Same as -b/--branch
 - `-f, --filter <expr>` - Filter resources (can be specified multiple times)
 - `-v, --verbose` - Enable verbose debug logging
@@ -72,6 +78,9 @@ kzdiff ./overlays/production
 # Compare with specific branch
 kzdiff ./overlays/production -b develop
 
+# Compare with a local branch that hasn't been pushed yet
+kzdiff ./overlays/production -b feature/my-working-branch
+
 # Compare with specific commit
 kzdiff ./overlays/production -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
 
@@ -86,6 +95,9 @@ kzdiff ./overlays/production -- --enable-helm
 
 # Combine multiple options
 kzdiff ./overlays/production -b staging -f kind=Deployment -- --enable-helm
+
+# Force comparison against the remote branch even if a local branch exists
+kzdiff ./overlays/production -b origin/staging
 ```
 
 ## Development

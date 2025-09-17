@@ -4,8 +4,13 @@ import { join } from "node:path"
 import { kustomizeBuildToTmp } from "./kustomize"
 import { $ } from "bun"
 
+const HAS_KUSTOMIZE = Boolean(Bun.which("kustomize"))
+const TEST_COMMIT = "3b4d8b0121ac84d7678591d8139b6eb5f88061d6"
+
+const describeIfKustomize = HAS_KUSTOMIZE ? describe : describe.skip
+
 // Test comment to trigger hook
-describe("kustomizeBuildToTmp", () => {
+describeIfKustomize("kustomizeBuildToTmp", () => {
 	test("should build kustomize and save as before.yaml", async () => {
 		const kustomizePath = join(process.cwd(), "examples/overlays/prod")
 		const outputPath = await kustomizeBuildToTmp(kustomizePath, "before.yaml")
@@ -62,15 +67,18 @@ describe("kustomizeBuildToTmp", () => {
 		}).toThrow("Failed to run kustomize build:")
 	})
 
-	test("should build from remote branch using Kustomize native support", async () => {
-		// Get the current remote URL
-		const remoteUrl = await $`git config --get remote.origin.url`.text()
-		const remote = remoteUrl.trim()
+        test("should build from remote branch using Kustomize native support", async () => {
+                // Get the current remote URL
+                const remoteUrl = await $`git config --get remote.origin.url`.text()
+                const remote = remoteUrl.trim()
+                const repoRoot = (await $`git rev-parse --show-toplevel`.text()).trim()
 
-		const outputPath = await kustomizeBuildToTmp("examples/overlays/prod", "after.yaml", undefined, {
-			ref: "main",
-			remote,
-		})
+                const outputPath = await kustomizeBuildToTmp("examples/overlays/prod", "after.yaml", undefined, {
+                        mode: "remote",
+                        ref: "main",
+                        remote,
+                        repoRoot,
+                })
 
 		// Check if file exists
 		const stats = await stat(outputPath)
@@ -85,11 +93,11 @@ describe("kustomizeBuildToTmp", () => {
 		expect(outputPath).toMatch(/after\.yaml$/)
 	})
 
-	test("should execute kustomize build command successfully (exit code 0)", async () => {
-		const kustomizePath = join(process.cwd(), "examples/overlays/prod")
+        test("should execute kustomize build command successfully (exit code 0)", async () => {
+                const kustomizePath = join(process.cwd(), "examples/overlays/prod")
 
-		// This should not throw an error if exit code is 0
-		await expect(kustomizeBuildToTmp(kustomizePath, "before.yaml")).resolves.toBeTruthy()
+                // This should not throw an error if exit code is 0
+                await expect(kustomizeBuildToTmp(kustomizePath, "before.yaml")).resolves.toBeTruthy()
 
 		// Also test with options
 		await expect(kustomizeBuildToTmp(kustomizePath, "after.yaml", ["--enable-helm"])).resolves.toBeTruthy()
@@ -103,13 +111,19 @@ describe("kustomizeBuildToTmp", () => {
 
 	test("should return empty file when remote directory does not exist", async () => {
 		// Get the current remote URL
-		const remoteUrl = await $`git config --get remote.origin.url`.text()
-		const remote = remoteUrl.trim()
+                const remoteUrl = await $`git config --get remote.origin.url`.text()
+                const remote = remoteUrl.trim()
+                const repoRoot = (await $`git rev-parse --show-toplevel`.text()).trim()
 
-		// Use a non-existent directory path
-		const nonExistentPath = "this/directory/does/not/exist"
+                // Use a non-existent directory path
+                const nonExistentPath = "this/directory/does/not/exist"
 
-		const outputPath = await kustomizeBuildToTmp(nonExistentPath, "before.yaml", undefined, { ref: "main", remote })
+                const outputPath = await kustomizeBuildToTmp(nonExistentPath, "before.yaml", undefined, {
+                        mode: "remote",
+                        ref: "main",
+                        remote,
+                        repoRoot,
+                })
 
 		// Check if file exists
 		const stats = await stat(outputPath)
@@ -123,19 +137,22 @@ describe("kustomizeBuildToTmp", () => {
 		expect(outputPath).toMatch(/before\.yaml$/)
 	})
 
-	test("should return empty file when directory exists in current branch but not in comparison branch", async () => {
+        test("should return empty file when directory exists in current branch but not in comparison branch", async () => {
 		// Get the current remote URL
-		const remoteUrl = await $`git config --get remote.origin.url`.text()
-		const remote = remoteUrl.trim()
+                const remoteUrl = await $`git config --get remote.origin.url`.text()
+                const remote = remoteUrl.trim()
+                const repoRoot = (await $`git rev-parse --show-toplevel`.text()).trim()
 
-		// Use examples/overlays/nothing which exists in current branch but not in 3b4d8b0121ac84d7678591d8139b6eb5f88061d6
-		const pathExistsNowButNotBefore = "examples/overlays/nothing"
+                // Use examples/overlays/nothing which exists in current branch but not in 3b4d8b0121ac84d7678591d8139b6eb5f88061d6
+                const pathExistsNowButNotBefore = "examples/overlays/nothing"
 
-		// Try to build from an older commit where this directory doesn't exist
-		const outputPath = await kustomizeBuildToTmp(pathExistsNowButNotBefore, "before.yaml", undefined, {
-			ref: "3b4d8b0121ac84d7678591d8139b6eb5f88061d6",
-			remote,
-		})
+                // Try to build from an older commit where this directory doesn't exist
+                const outputPath = await kustomizeBuildToTmp(pathExistsNowButNotBefore, "before.yaml", undefined, {
+                        mode: "remote",
+                        ref: "3b4d8b0121ac84d7678591d8139b6eb5f88061d6",
+                        remote,
+                        repoRoot,
+                })
 
 		// Check if file exists
 		const stats = await stat(outputPath)
@@ -153,5 +170,28 @@ describe("kustomizeBuildToTmp", () => {
 		const currentContent = await Bun.file(currentBranchOutput).text()
 		expect(currentContent.length).toBeGreaterThan(0)
 		expect(currentContent).toContain("apiVersion:")
-	})
+        })
+
+        test("should build from a local git ref using worktree", async () => {
+                const repoRoot = (await $`git rev-parse --show-toplevel`.text()).trim()
+                const localBranch = "kzdiff-kustomize-local-test"
+
+                await $`git branch -f ${localBranch} ${TEST_COMMIT}`.quiet()
+
+                try {
+                        const kustomizePath = join(process.cwd(), "examples/overlays/prod")
+                        const outputPath = await kustomizeBuildToTmp(kustomizePath, "before.yaml", undefined, {
+                                mode: "local",
+                                ref: localBranch,
+                                repoRoot,
+                        })
+
+                        const stats = await stat(outputPath)
+                        expect(stats.isFile()).toBe(true)
+                        const content = await Bun.file(outputPath).text()
+                        expect(content.length).toBeGreaterThan(0)
+                } finally {
+                        await $`git branch -D ${localBranch}`.nothrow().quiet()
+                }
+        })
 })

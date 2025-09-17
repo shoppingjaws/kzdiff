@@ -2,6 +2,7 @@
 
 import { readFile } from "node:fs/promises"
 import { $ } from "bun"
+import { resolve } from "node:path"
 import { createDebugLogger, setVerbose } from "./debug"
 import { filterYaml } from "./filter"
 import { kustomizeBuildToTmp } from "./kustomize"
@@ -18,7 +19,7 @@ async function main() {
 		const helpText = `Usage: ${progName} <kustomize-path> [options...]
 
 Options:
-  -b, --branch <ref>       Remote branch or commit to compare against
+  -b, --branch <ref>       Branch, commit, or ref to compare against (remote by default)
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
   -f, --filter <expr>      Filter resources using JSONPath expressions (can be specified multiple times)
   -h, --help               Show this help message
@@ -48,9 +49,14 @@ Examples:
 
 Note: When using commit hashes, use the full 40-character SHA`
 
-		console.log(helpText)
-		process.exit(exitCode)
-	}
+                const localNote = `
+Local references:
+  • Local branches and commits that aren't pushed are detected automatically
+  • Use origin/<branch> to force comparison against the remote branch`
+
+                console.log(`${helpText}\n${localNote}`)
+                process.exit(exitCode)
+        }
 
 	// Check for version flag
 	if (args.includes("--version")) {
@@ -68,17 +74,20 @@ Note: When using commit hashes, use the full 40-character SHA`
 		showHelp(1)
 	}
 
-	const kustomizePath = args[0] as string // We know args[0] exists after the length check
-	let remoteRef: string | null = null
-	let kustomizeOptions: string[] = []
-	let verbose = false
-	const filterOptions: string[] = []
+        const kustomizePathArg = args[0] as string // We know args[0] exists after the length check
+        const resolvedKustomizePath = resolve(kustomizePathArg)
+        let remoteRef: string | null = null
+        let requestedRef: string | null = null
+        let kustomizeOptions: string[] = []
+        let verbose = false
+        const filterOptions: string[] = []
 
 	// Parse arguments
 	for (let i = 1; i < args.length; i++) {
 		if (args[i] === "-b" || args[i] === "--branch" || args[i] === "-r" || args[i] === "--ref") {
 			if (i + 1 < args.length && args[i + 1] !== undefined) {
-				remoteRef = args[i + 1] ?? null
+                                remoteRef = args[i + 1] ?? null
+                                requestedRef = remoteRef
 				i++ // Skip next argument
 			} else {
 				console.error(`Error: ${args[i]} requires a branch name or commit hash`)
@@ -111,88 +120,163 @@ Note: When using commit hashes, use the full 40-character SHA`
 		setVerbose(true)
 	}
 
-	debug(`Processing path: ${kustomizePath}`)
-	if (kustomizeOptions.length > 0) {
-		debug(`Kustomize options: ${kustomizeOptions.join(" ")}`)
-	}
-	if (filterOptions.length > 0) {
-		debug(`Filter options: ${filterOptions.join(", ")}`)
+        debug(`Processing path: ${kustomizePathArg}`)
+        if (kustomizeOptions.length > 0) {
+                debug(`Kustomize options: ${kustomizeOptions.join(" ")}`)
+        }
+        if (filterOptions.length > 0) {
+                debug(`Filter options: ${filterOptions.join(", ")}`)
 	}
 
 	try {
-		// Get current git remote and branch
-		const remoteUrl = await $`git config --get remote.origin.url`.text()
-		const remote = remoteUrl.trim()
-		const currentBranch = await $`git rev-parse --abbrev-ref HEAD`.text()
-		const branch = currentBranch.trim()
+                // Get current git remote (if configured), branch, and repository root
+                const remoteResult = await $`git config --get remote.origin.url`.nothrow().quiet()
+                const remote = remoteResult.exitCode === 0 ? remoteResult.stdout.toString().trim() : null
+                const repoRootResult = await $`git rev-parse --show-toplevel`.text()
+                const repoRoot = repoRootResult.trim()
+                const currentBranch = await $`git rev-parse --abbrev-ref HEAD`.text()
+                const branch = currentBranch.trim()
 
-		debug(`Remote: ${remote}`)
-		debug(`Current branch: ${branch}`)
+                if (remote) {
+                        debug(`Remote: ${remote}`)
+                } else {
+                        debug("No remote.origin configured; running in local comparison mode")
+                }
+                debug(`Repository root: ${repoRoot}`)
+                debug(`Current branch: ${branch}`)
 
 		// If no remote ref specified, get the default branch
-		if (!remoteRef) {
-			debug("No remote ref specified, detecting default branch...")
-			try {
-				// Try to get the default branch from remote
-				const defaultBranchResult = await $`git symbolic-ref refs/remotes/origin/HEAD`.text()
-				remoteRef = defaultBranchResult.trim().replace("refs/remotes/origin/", "")
-				debug(`Detected default branch: ${remoteRef}`)
-			} catch {
-				// Fallback: try common default branches
-				debug("Could not detect default branch from remote, trying common defaults...")
-				const commonDefaults = ["main", "master"]
-				for (const defaultBranch of commonDefaults) {
-					try {
-						const checkResult = await $`git ls-remote --heads origin ${defaultBranch}`.text()
-						if (checkResult.trim()) {
-							remoteRef = defaultBranch
-							debug(`Found default branch: ${remoteRef}`)
-							break
-						}
-					} catch {
-						// Continue to next
-					}
-				}
+                if (!remoteRef) {
+                        debug("No remote ref specified, detecting default branch...")
+                        if (remote) {
+                                try {
+                                        // Try to get the default branch from remote
+                                        const defaultBranchResult = await $`git symbolic-ref refs/remotes/origin/HEAD`.text()
+                                        remoteRef = defaultBranchResult.trim().replace("refs/remotes/origin/", "")
+                                        debug(`Detected default branch: ${remoteRef}`)
+                                } catch {
+                                        // Fallback: try common default branches on remote
+                                        debug("Could not detect default branch from remote, trying common defaults...")
+                                        const commonDefaults = ["main", "master"]
+                                        for (const defaultBranch of commonDefaults) {
+                                                try {
+                                                        const checkResult = await $`git ls-remote --heads origin ${defaultBranch}`.text()
+                                                        if (checkResult.trim()) {
+                                                                remoteRef = defaultBranch
+                                                                debug(`Found default branch: ${remoteRef}`)
+                                                                break
+                                                        }
+                                                } catch {
+                                                        // Continue to next
+                                                }
+                                        }
+                                }
+                        } else {
+                                debug("No git remote configured, trying common local default branches...")
+                                const commonDefaults = ["main", "master"]
+                                for (const defaultBranch of commonDefaults) {
+                                        const localBranchCheck = await $`git rev-parse --verify ${defaultBranch}`.nothrow().quiet()
+                                        if (localBranchCheck.exitCode === 0) {
+                                                remoteRef = defaultBranch
+                                                debug(`Found local default branch: ${remoteRef}`)
+                                                break
+                                        }
+                                }
+                        }
 
-				if (!remoteRef) {
-					console.error("Could not determine default remote branch. Please specify with -b or -r option.")
-					process.exit(1)
-				}
-			}
-		}
+                        if (!remoteRef) {
+                                console.error(
+                                        "Could not determine default branch. Please specify with -b or -r option.",
+                                )
+                                process.exit(1)
+                        }
+                }
 
-		debug(`Using remote ref: ${remoteRef}`)
+                let useLocalGitRef = false
+                let localGitRef: string | null = null
 
-		// Build local version
-		debug("Building local version...")
-		const localPath = await kustomizeBuildToTmp(kustomizePath, "after.yaml", kustomizeOptions)
-		debug(`Local build saved to: ${localPath}`)
+                if (requestedRef) {
+                        const localRefCheck = await $`git rev-parse --verify ${requestedRef}`.nothrow().quiet()
+                        if (localRefCheck.exitCode === 0) {
+                                useLocalGitRef = true
+                                localGitRef = requestedRef
+                                debug(`Detected local git ref: ${requestedRef}`)
+                        } else {
+                                debug(
+                                        `Local git ref check failed for ${requestedRef} (exit code ${localRefCheck.exitCode}), using remote comparison`,
+                                )
+                        }
+                }
 
-		// Build remote version (from specified ref)
-		debug(`Building remote version (${remoteRef})...`)
-		const remotePath = await kustomizeBuildToTmp(kustomizePath, "before.yaml", kustomizeOptions, {
-			ref: remoteRef,
-			remote,
-		})
-		debug(`Remote build saved to: ${remotePath}`)
+                if (!remote && remoteRef && !useLocalGitRef) {
+                        const localDefaultCheck = await $`git rev-parse --verify ${remoteRef}`.nothrow().quiet()
+                        if (localDefaultCheck.exitCode === 0) {
+                                useLocalGitRef = true
+                                localGitRef = remoteRef
+                                debug(`No remote configured; using local git ref: ${remoteRef}`)
+                        }
+                }
 
-		// Apply filters if specified
-		if (filterOptions.length > 0) {
-			debug("Applying filters to both builds...")
-			await filterYaml(localPath, filterOptions)
-			await filterYaml(remotePath, filterOptions)
-			debug("Filters applied successfully")
-		}
+                const comparisonRef = (useLocalGitRef ? localGitRef : remoteRef) ?? null
 
-		// Show diff
-		debug(`\nShowing diff between ${remoteRef} and local changes:`)
-		debug("=".repeat(80))
+                if (!comparisonRef) {
+                        throw new Error("Unable to determine comparison ref")
+                }
 
-		// Use YAML-based diff for better structured output
-		const oldContent = await readFile(remotePath, "utf-8")
-		const newContent = await readFile(localPath, "utf-8")
-		const diffOutput = yamlDiff(oldContent, newContent)
-		console.log(diffOutput)
+                if (useLocalGitRef) {
+                        debug(`Using local git ref: ${comparisonRef}`)
+                } else {
+                        debug(`Using remote ref: ${comparisonRef}`)
+                }
+
+                // Build local version
+                debug("Building local version...")
+                const localPath = await kustomizeBuildToTmp(resolvedKustomizePath, "after.yaml", kustomizeOptions)
+                debug(`Local build saved to: ${localPath}`)
+
+                // Build comparison version (remote or local ref)
+                let beforePath: string
+                if (useLocalGitRef) {
+                        debug(`Building local git ref (${comparisonRef})...`)
+                        beforePath = await kustomizeBuildToTmp(resolvedKustomizePath, "before.yaml", kustomizeOptions, {
+                                mode: "local",
+                                ref: comparisonRef,
+                                repoRoot,
+                        })
+                        debug(`Local git ref build saved to: ${beforePath}`)
+                } else {
+                        if (!remote) {
+                                throw new Error(
+                                        `No git remote configured; cannot compare against remote ref ${comparisonRef}. Configure a remote or specify a local ref.`,
+                                )
+                        }
+                        debug(`Building remote version (${comparisonRef})...`)
+                        beforePath = await kustomizeBuildToTmp(resolvedKustomizePath, "before.yaml", kustomizeOptions, {
+                                mode: "remote",
+                                ref: comparisonRef,
+                                remote,
+                                repoRoot,
+                        })
+                        debug(`Remote build saved to: ${beforePath}`)
+                }
+
+                // Apply filters if specified
+                if (filterOptions.length > 0) {
+                        debug("Applying filters to both builds...")
+                        await filterYaml(localPath, filterOptions)
+                        await filterYaml(beforePath, filterOptions)
+                        debug("Filters applied successfully")
+                }
+
+                // Show diff
+                debug(`\nShowing diff between ${comparisonRef} and local changes:`)
+                debug("=".repeat(80))
+
+                // Use YAML-based diff for better structured output
+                const oldContent = await readFile(beforePath, "utf-8")
+                const newContent = await readFile(localPath, "utf-8")
+                const diffOutput = yamlDiff(oldContent, newContent)
+                console.log(diffOutput)
 	} catch (error) {
 		console.error("Error:", error)
 		process.exit(1)
