@@ -46,7 +46,7 @@ Examples:
   ${progName} ./examples/overlays/prod -- --enable-helm
   ${progName} ./examples/overlays/prod -b staging -- --enable-helm
 
-Note: When using commit hashes, use the full 40-character SHA`
+Note: Short commit hashes are supported and will be resolved automatically`
 
 		console.log(helpText)
 		process.exit(exitCode)
@@ -157,6 +157,39 @@ Note: When using commit hashes, use the full 40-character SHA`
 				if (!remoteRef) {
 					console.error("Could not determine default remote branch. Please specify with -b or -r option.")
 					process.exit(1)
+				}
+			}
+		}
+
+		if (remoteRef) {
+			const potentialShaPattern = /^[0-9a-fA-F]{7,40}$/
+			const isPotentialSha = potentialShaPattern.test(remoteRef)
+
+			if (isPotentialSha && remoteRef.length < 40) {
+				const branchCheck = await $`git show-ref --verify --quiet refs/heads/${remoteRef}`.quiet().nothrow()
+				const tagCheck = await $`git show-ref --verify --quiet refs/tags/${remoteRef}`.quiet().nothrow()
+
+				if (branchCheck.exitCode !== 0 && tagCheck.exitCode !== 0) {
+					const resolvedRef = await $`git rev-parse ${remoteRef}`.quiet().nothrow()
+
+					if (resolvedRef.exitCode === 0) {
+						const fullSha = resolvedRef.stdout.toString().trim()
+
+						if (fullSha.length === 40) {
+							debug(`Resolved short commit ${remoteRef} to full SHA ${fullSha}`)
+							remoteRef = fullSha
+						} else {
+							debug(`Resolved ref ${remoteRef} to ${fullSha}, but it is not a full 40-character SHA.`)
+						}
+					} else {
+						const errorMessage = resolvedRef.stderr?.toString().trim()
+
+						if (errorMessage) {
+							debug(`Failed to resolve short commit ${remoteRef}: ${errorMessage}`)
+						} else {
+							debug(`Failed to resolve short commit ${remoteRef}: exit code ${resolvedRef.exitCode}`)
+						}
+					}
 				}
 			}
 		}
