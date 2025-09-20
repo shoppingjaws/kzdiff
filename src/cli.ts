@@ -22,18 +22,23 @@ async function resolveShortCommit(ref: string, remote: string): Promise<string> 
 		// fall through to remote lookup
 	}
 
-	const pattern = `${ref}*`
-	const lsRemoteOutput = (await $`git ls-remote ${remote} ${pattern}`.nothrow().text()).trim()
+	const lsRemoteOutput = (await $`git ls-remote ${remote}`.nothrow().text()).trim()
 	if (!lsRemoteOutput) {
 		throw new Error(`Could not resolve short commit hash '${ref}' on remote`)
 	}
 
-	const matches = lsRemoteOutput
-		.split("\n")
-		.map((line) => line.trim())
-		.filter(Boolean)
-		.map((line) => line.split(/\s+/)[0] ?? "")
-		.filter((sha) => FULL_SHA_REGEX.test(sha))
+	const lowercaseRef = ref.toLowerCase()
+	const matches = Array.from(
+		new Set(
+			lsRemoteOutput
+				.split("\n")
+				.map((line) => line.trim())
+				.filter(Boolean)
+				.map((line) => line.split(/\s+/)[0] ?? "")
+				.filter((sha) => FULL_SHA_REGEX.test(sha))
+				.filter((sha) => sha.toLowerCase().startsWith(lowercaseRef)),
+		),
+	)
 
 	if (matches.length === 1) {
 		return matches[0]!
