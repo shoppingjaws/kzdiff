@@ -2,10 +2,11 @@ import { describe, test, expect, beforeEach } from "bun:test"
 import { $ } from "bun"
 import { join } from "node:path"
 
-describe("kzdiff CLI", () => {
-	const CLI_PATH = join(process.cwd(), "src/cli.ts")
-	const TEST_COMMIT = "3b4d8b0121ac84d7678591d8139b6eb5f88061d6"
-	const EXAMPLE_PATH = "./examples/overlays/prod"
+	describe("kzdiff CLI", () => {
+		const CLI_PATH = join(process.cwd(), "src/cli.ts")
+		const TEST_COMMIT = "3b4d8b0121ac84d7678591d8139b6eb5f88061d6"
+		const TEST_COMMIT_SHORT = TEST_COMMIT.slice(0, 8)
+		const EXAMPLE_PATH = "./examples/overlays/prod"
 
 	// Helper to run CLI and capture output
 	async function runCLI(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
@@ -64,6 +65,16 @@ describe("kzdiff CLI", () => {
 
 			// Current version has additional team label that doesn't exist in test commit
 			expect(stdout).toContain("team: platform")
+		})
+
+		test("should resolve short commit hash", async () => {
+			const { stdout, exitCode } = await runCLI([EXAMPLE_PATH, "-r", TEST_COMMIT_SHORT, "-v"])
+
+			expect(exitCode).toBe(0)
+			expect(stdout).toContain("Building local version...")
+			expect(stdout).toContain(`Resolved short commit hash ${TEST_COMMIT_SHORT} to ${TEST_COMMIT}`)
+			expect(stdout).toContain(`Building remote version (${TEST_COMMIT_SHORT} -> ${TEST_COMMIT})...`)
+			expect(stdout).toContain(`Showing diff between ${TEST_COMMIT_SHORT} -> ${TEST_COMMIT} and local changes:`)
 		})
 
 		test("should compare with branch name", async () => {
