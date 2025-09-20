@@ -218,9 +218,8 @@ Note: Commit hashes can be full 40-character SHAs or short (>=7 chars) identifie
 			}
 		}
 
-		const remoteRefLabel = remoteRefInput && remoteRefInput !== remoteRef
-			? `${remoteRefInput} -> ${remoteRef}`
-			: remoteRef
+		const remoteRefLabel =
+			remoteRefInput && remoteRefInput !== remoteRef ? `${remoteRefInput} -> ${remoteRef}` : remoteRef
 
 		debug(`Using remote ref: ${remoteRefLabel}`)
 

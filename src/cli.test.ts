@@ -2,11 +2,11 @@ import { describe, test, expect, beforeEach } from "bun:test"
 import { $ } from "bun"
 import { join } from "node:path"
 
-	describe("kzdiff CLI", () => {
-		const CLI_PATH = join(process.cwd(), "src/cli.ts")
-		const TEST_COMMIT = "3b4d8b0121ac84d7678591d8139b6eb5f88061d6"
-		const TEST_COMMIT_SHORT = TEST_COMMIT.slice(0, 8)
-		const EXAMPLE_PATH = "./examples/overlays/prod"
+describe("kzdiff CLI", () => {
+	const CLI_PATH = join(process.cwd(), "src/cli.ts")
+	const TEST_COMMIT = "3b4d8b0121ac84d7678591d8139b6eb5f88061d6"
+	const TEST_COMMIT_SHORT = TEST_COMMIT.slice(0, 8)
+	const EXAMPLE_PATH = "./examples/overlays/prod"
 
 	// Helper to run CLI and capture output
 	async function runCLI(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
