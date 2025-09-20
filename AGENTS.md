@@ -1,80 +1,19 @@
-# CLAUDE.md
+# Repository Guidelines
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Project Structure & Module Organization
+Source is under `src/`, with CLI orchestration in `src/cli.ts`, Kustomize helpers in `src/kustomize.ts`, filtering in `src/filter.ts`, and YAML comparison utilities in `src/yaml-diff/`. Tests live alongside modules as `*.test.ts`; integration fixtures reside in `src/yaml-diff/integration-test/`. Example manifests for manual experiments are kept in `examples/`.
 
-## Overview
+## Build, Test, and Development Commands
+Use `bun test` for the full suite and `bun test:unit` to skip CLI integrations. Targeted checks exist for YAML tooling (`bun run test:yaml`) and the CLI (`bun run test:cli`). Format and lint with Biome via `bun run format` and `bun run lint`. Compile a standalone binary locally with `bun run build`, and run `bun run typecheck` before publishing to catch type regressions.
 
-kzdiff is a CLI tool for comparing Kustomize build results between branches. It's built with Bun, TypeScript, and uses native Git remote support with Kustomize's remote URL feature.
+## Coding Style & Naming Conventions
+The project uses TypeScript in Bun's ESM mode. Keep imports sorted logically (builtin → external → local) and prefer small, composable functions. Tabs are used for indentation; avoid mixing spaces. Follow Biome defaults for spacing and quotes, and run the formatter before pushing. Tests, modules, and helper utilities follow `kebab-case` filenames; exported symbols use `camelCase`, while constructors stay `PascalCase`.
 
-## Commands
+## Testing Guidelines
+Rely on Bun's built-in test runner. Name specs with the `.test.ts` suffix and mirror the file under test (e.g., `kustomize.ts` → `kustomize.test.ts`). Include realistic fixtures in `src/yaml-diff/integration-test/` when adding complex diff scenarios. New features should extend unit coverage and, when user-visible behavior changes, add an integration test to `src/cli.test.ts`. Always run `bun test` before submitting a PR.
 
-### Development
-```bash
-# Run all tests
-bun test
+## Commit & Pull Request Guidelines
+Follow the existing Git history convention of `type: short description` (e.g., `fix: handle empty overlays`). Squash noisy WIP commits locally. Pull requests should describe intent, list validation steps (`bun test`, `bun run format`), and reference related issues. Include screenshots or sample diff outputs when the CLI output changes. Request review once CI is green and the branch is synced with `main`.
 
-# Run specific test files
-bun test cli.test.ts
-bun test diff.test.ts
-bun test kustomize.test.ts
-
-# Run unit tests only (excluding CLI integration tests)
-bun test:unit
-
-# Format code with Biome
-bun run format
-
-# Lint and fix code with Biome
-bun run lint
-
-# Build standalone binary
-bun run build
-
-# Install globally for development
-bun link
-```
-
-### Common Usage
-```bash
-# Show version
-kzdiff --version
-
-# Compare with auto-detected default branch (main/master)
-kzdiff ./overlays/production
-
-# Compare with specific branch or commit
-kzdiff ./overlays/production -b develop
-kzdiff ./overlays/production -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
-
-# Pass options to kustomize
-kzdiff ./overlays/production -- --enable-helm
-
-# Enable verbose debug output
-kzdiff ./overlays/production -v
-```
-
-## Architecture
-
-The codebase consists of focused modules:
-
-- **cli.ts**: CLI entry point that handles argument parsing, Git operations, and orchestrates the diff process
-- **kustomize.ts**: Handles Kustomize builds using remote URL syntax for Git references
-- **diff.ts**: Wraps the system `diff` command with color support and fallback options
-- **debug.ts**: Provides conditional debug logging controlled by verbose flag
-
-Key implementation details:
-- Uses Kustomize's native remote URL support (`https://github.com/owner/repo//path?ref=branch`)
-- Temporary directory management for build outputs
-- Auto-detects default branch when no ref is specified
-- Handles non-existent remote directories gracefully (creates empty file)
-
-## Tool Requirements
-
-The project uses mise for tool version management:
-- Bun 1.2.19+
-- Kustomize 5.7.1
-- Biome (installed via npm)
-
-## Publishing
-
-The package is published to npm as `kzdiff`. Version is managed in package.json and displayed via `--version` flag.
+## Tooling & Environment
+Tool versions are pinned via `mise`. Run `mise install` after cloning to provision Bun ≥1.2.19, Kustomize 5.7.1, and Biome. Keep `bun.lock` committed; if dependencies change, regenerate with `bun install` and note the update in the PR description.
