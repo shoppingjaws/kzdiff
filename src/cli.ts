@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { access, readFile } from "node:fs/promises"
+import { readFile, stat } from "node:fs/promises"
 import { $ } from "bun"
 import { createDebugLogger, setVerbose } from "./debug"
 import { filterYaml } from "./filter"
@@ -9,16 +9,11 @@ import { yamlDiff } from "./yaml-diff"
 
 const debug = createDebugLogger("kzdiff-cli")
 
-// Check if a file is a YAML file based on extension
-function isYamlFile(filepath: string): boolean {
-	return filepath.endsWith(".yaml") || filepath.endsWith(".yml")
-}
-
-// Check if a file exists
-async function fileExists(filepath: string): Promise<boolean> {
+// Check if a path is a directory
+async function isDirectory(path: string): Promise<boolean> {
 	try {
-		await access(filepath)
-		return true
+		const stats = await stat(path)
+		return stats.isDirectory()
 	} catch {
 		return false
 	}
@@ -31,16 +26,16 @@ async function main() {
 	const showHelp = (exitCode: number = 0) => {
 		const progName = "kzdiff"
 		const helpText = `Usage: ${progName} <kustomize-path> [options...]
-       ${progName} <file1.yaml> <file2.yaml> [options...]
+       ${progName} <kustomize-path1> <kustomize-path2> [options...]
 
 Options:
-  -b, --branch <ref>       Remote branch or commit to compare against (Kustomize mode only)
+  -b, --branch <ref>       Remote branch or commit to compare against (remote comparison only)
   -r, --ref <ref>          Same as -b/--branch (default: auto-detect)
   -f, --filter <expr>      Filter resources using JSONPath expressions (can be specified multiple times)
   -h, --help               Show this help message
   -v, --verbose            Enable verbose debug logging
   --version                Show version number
-  --                       Pass remaining arguments to kustomize (Kustomize mode only)
+  --                       Pass remaining arguments to kustomize
 
 Filter expressions (JSONPath):
   Simple shortcuts:
@@ -53,19 +48,17 @@ Filter expressions (JSONPath):
     $[?(@.spec.replicas>2)]
     $[?(@.metadata.labels.team=='platform')]
 
-Examples (Kustomize mode):
-  ${progName} ./examples/overlays/prod
-  ${progName} ./examples/overlays/prod -b develop
-  ${progName} ./examples/overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
-  ${progName} ./examples/overlays/prod -f kind=Deployment
-  ${progName} ./examples/overlays/prod -f kind=Deployment -f kind=Service
-  ${progName} ./examples/overlays/prod -- --enable-helm
-  ${progName} ./examples/overlays/prod -b staging -- --enable-helm
+Examples (Remote branch comparison):
+  ${progName} ./overlays/prod
+  ${progName} ./overlays/prod -b develop
+  ${progName} ./overlays/prod -r b44e5dcad7aa15e023eb09f24a5b9b968cc46e13
+  ${progName} ./overlays/prod -f kind=Deployment
+  ${progName} ./overlays/prod -- --enable-helm
 
-Examples (Local YAML comparison):
-  ${progName} before.yaml after.yaml
-  ${progName} old-deployment.yaml new-deployment.yaml -f kind=Deployment
-  ${progName} manifests-v1.yaml manifests-v2.yaml -v
+Examples (Local directory comparison):
+  ${progName} ./overlays/stg ./overlays/prd
+  ${progName} ./overlays/stg ./overlays/prd -f kind=Deployment
+  ${progName} ./overlays/stg ./overlays/prd -- --enable-helm
 
 Note: When using commit hashes, use the full 40-character SHA`
 
@@ -89,26 +82,29 @@ Note: When using commit hashes, use the full 40-character SHA`
 		showHelp(1)
 	}
 
-	// Check if this is local YAML file comparison mode
-	// Look for two consecutive YAML files at the beginning of args (before any options)
+	// Check if this is local Kustomize directory comparison mode
+	// Look for two consecutive directory paths at the beginning of args (before any options)
 	let isLocalMode = false
-	let file1: string | null = null
-	let file2: string | null = null
+	let path1: string | null = null
+	let path2: string | null = null
 	let optionsStartIndex = 1
 
-	if (args.length >= 2 && isYamlFile(args[0] ?? "") && isYamlFile(args[1] ?? "")) {
-		// Check if both files exist
-		const firstFileExists = await fileExists(args[0] ?? "")
-		const secondFileExists = await fileExists(args[1] ?? "")
+	if (args.length >= 2) {
+		const firstArg = args[0] ?? ""
+		const secondArg = args[1] ?? ""
 
-		if (firstFileExists && secondFileExists) {
+		// Check if both are directories
+		const firstIsDir = await isDirectory(firstArg)
+		const secondIsDir = await isDirectory(secondArg)
+
+		if (firstIsDir && secondIsDir) {
 			isLocalMode = true
-			file1 = args[0] ?? null
-			file2 = args[1] ?? null
+			path1 = firstArg
+			path2 = secondArg
 			optionsStartIndex = 2
-			debug("Detected local YAML comparison mode")
-			debug(`File 1: ${file1}`)
-			debug(`File 2: ${file2}`)
+			debug("Detected local Kustomize directory comparison mode")
+			debug(`Path 1: ${path1}`)
+			debug(`Path 2: ${path2}`)
 		}
 	}
 
@@ -122,7 +118,7 @@ Note: When using commit hashes, use the full 40-character SHA`
 	for (let i = optionsStartIndex; i < args.length; i++) {
 		if (args[i] === "-b" || args[i] === "--branch" || args[i] === "-r" || args[i] === "--ref") {
 			if (isLocalMode) {
-				console.error(`Error: ${args[i]} is not supported in local YAML comparison mode`)
+				console.error(`Error: ${args[i]} is not supported in local directory comparison mode`)
 				process.exit(1)
 			}
 			if (i + 1 < args.length && args[i + 1] !== undefined) {
@@ -144,10 +140,6 @@ Note: When using commit hashes, use the full 40-character SHA`
 		} else if (args[i] === "-v" || args[i] === "--verbose") {
 			verbose = true
 		} else if (args[i] === "--") {
-			if (isLocalMode) {
-				console.error("Error: -- is not supported in local YAML comparison mode")
-				process.exit(1)
-			}
 			// Everything after -- goes to kustomize
 			kustomizeOptions = args.slice(i + 1)
 			break
@@ -175,43 +167,33 @@ Note: When using commit hashes, use the full 40-character SHA`
 		let oldContent: string
 		let newContent: string
 
-		if (isLocalMode && file1 && file2) {
-			// Local YAML file comparison mode
-			debug("Running in local YAML comparison mode")
+		if (isLocalMode && path1 && path2) {
+			// Local Kustomize directory comparison mode
+			debug("Running in local Kustomize directory comparison mode")
 
-			// Read files directly
-			debug(`Reading file 1: ${file1}`)
-			oldContent = await readFile(file1, "utf-8")
-			debug(`Reading file 2: ${file2}`)
-			newContent = await readFile(file2, "utf-8")
+			// Build first directory
+			debug(`Building path 1: ${path1}`)
+			const firstPath = await kustomizeBuildToTmp(path1, "before.yaml", kustomizeOptions)
+			debug(`First build saved to: ${firstPath}`)
+
+			// Build second directory
+			debug(`Building path 2: ${path2}`)
+			const secondPath = await kustomizeBuildToTmp(path2, "after.yaml", kustomizeOptions)
+			debug(`Second build saved to: ${secondPath}`)
 
 			// Apply filters if specified
 			if (filterOptions.length > 0) {
-				debug("Applying filters to both files...")
-				const { mkdtemp, writeFile } = await import("node:fs/promises")
-				const { join } = await import("node:path")
-				const { tmpdir } = await import("node:os")
-
-				// Create temporary files for filtering
-				const tempDir = await mkdtemp(join(tmpdir(), "kzdiff-filter-"))
-				const tempFile1 = join(tempDir, "file1.yaml")
-				const tempFile2 = join(tempDir, "file2.yaml")
-
-				// Write to temp files
-				await writeFile(tempFile1, oldContent)
-				await writeFile(tempFile2, newContent)
-
-				// Apply filters
-				await filterYaml(tempFile1, filterOptions)
-				await filterYaml(tempFile2, filterOptions)
-
-				// Read filtered content
-				oldContent = await readFile(tempFile1, "utf-8")
-				newContent = await readFile(tempFile2, "utf-8")
+				debug("Applying filters to both builds...")
+				await filterYaml(firstPath, filterOptions)
+				await filterYaml(secondPath, filterOptions)
 				debug("Filters applied successfully")
 			}
 
-			debug(`\nShowing diff between ${file1} and ${file2}:`)
+			// Read build results
+			oldContent = await readFile(firstPath, "utf-8")
+			newContent = await readFile(secondPath, "utf-8")
+
+			debug(`\nShowing diff between ${path1} and ${path2}:`)
 			debug("=".repeat(80))
 		} else {
 			// Kustomize build comparison mode
