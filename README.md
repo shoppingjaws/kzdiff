@@ -1,6 +1,6 @@
 # kzdiff
 
-A CLI tool for comparing Kustomize build results between branches.
+A CLI tool for comparing Kustomize build results between branches or local directories.
 
 ## Installation
 
@@ -15,7 +15,7 @@ npm install -g kzdiff
 
 ## Usage
 
-### Basic usage (compare with main branch)
+### Compare with remote branch (default: main)
 
 ```bash
 kzdiff ./overlays/production
@@ -25,6 +25,16 @@ kzdiff ./overlays/production
 
 ```bash
 kzdiff ./overlays/production -b develop
+```
+
+### Compare local directories
+
+```bash
+# Compare staging and production environments
+kzdiff ./overlays/staging ./overlays/production
+
+# Compare any two Kustomize directories
+kzdiff ./base ./overlays/dev
 ```
 
 ### Filter specific resources
@@ -55,15 +65,17 @@ kzdiff ./overlays/production -f '$[?(@.metadata.labels.team=="platform")]'
 
 ## Options
 
-- `-b, --branch <ref>` - Remote branch or commit to compare against (default: auto-detect)
+- `-b, --branch <ref>` - Remote branch or commit to compare against (remote comparison only, default: auto-detect)
 - `-r, --ref <ref>` - Same as -b/--branch
-- `-f, --filter <expr>` - Filter resources (can be specified multiple times)
+- `-f, --filter <expr>` - Filter resources using JSONPath expressions (can be specified multiple times)
 - `-v, --verbose` - Enable verbose debug logging
 - `-h, --help` - Display help
 - `--version` - Show version number
 - `--` - Pass remaining arguments to kustomize
 
 ## Examples
+
+### Remote branch comparison
 
 ```bash
 # Compare with auto-detected default branch (main/master)
@@ -86,6 +98,22 @@ kzdiff ./overlays/production -- --enable-helm
 
 # Combine multiple options
 kzdiff ./overlays/production -b staging -f kind=Deployment -- --enable-helm
+```
+
+### Local directory comparison
+
+```bash
+# Compare two local environments
+kzdiff ./overlays/staging ./overlays/production
+
+# Compare with filters
+kzdiff ./overlays/staging ./overlays/production -f kind=Deployment
+
+# Compare with kustomize options
+kzdiff ./overlays/staging ./overlays/production -- --enable-helm
+
+# Combine filters and kustomize options
+kzdiff ./overlays/dev ./overlays/prod -f kind=Service -f kind=Deployment -- --load-restrictor=none
 ```
 
 ## Development

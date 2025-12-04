@@ -1,0 +1,5 @@
+{
+	"workdir": "/workdir",
+	"base_image": "jdxcode/mise:2025.11",
+	"install_commands": ["mise trust", "bun install"]
+}
