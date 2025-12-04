@@ -1,12 +1,12 @@
 {
-  "workdir": "/workdir",
-  "base_image": "jdxcode/mise:2025.11",
-  "install_commands": [
-    "mise trust",
-    "mise install node",
-    "mise install bun",
-    "mise install kustomize",
-    "mise install aqua:homeport/dyff",
-    "bun install"
-  ]
+	"workdir": "/workdir",
+	"base_image": "jdxcode/mise:2025.11",
+	"install_commands": [
+		"mise trust",
+		"mise install node",
+		"mise install bun",
+		"mise install kustomize",
+		"mise install aqua:homeport/dyff",
+		"bun install"
+	]
 }
