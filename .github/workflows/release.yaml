@@ -68,7 +68,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - run: bun pm pack
-      - run: bunx npm@latest publish ./kzdiff-${{ needs.check-version.outputs.version }}.tgz --provenance
+      - run: bunx npm@latest publish ./${{ vars.NPM_REGISTRY_NAME }}-${{ needs.check-version.outputs.version }}.tgz --provenance
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
