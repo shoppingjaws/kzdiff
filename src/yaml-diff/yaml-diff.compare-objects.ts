@@ -122,7 +122,9 @@ function handleModifiedKeys(
 			const nestedDiffs = compareObjects(oldVal, newVal, path ? `${path}.${key}` : key, resourceKey, includeResourceKey)
 			output.push(...nestedDiffs)
 		} else if (isMultilineYaml(oldVal) && isMultilineYaml(newVal)) {
-			// Handle multiline YAML text
+			if (oldVal === newVal) {
+				continue
+			}
 			const fieldPath = path ? `${path}.${key}` : key
 			handleMultilineTextDiff(oldVal, newVal, fieldPath, resourceKey, includeResourceKey, output)
 		} else if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
