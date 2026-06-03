@@ -54,7 +54,7 @@ export function formatArrayObject(obj: any, output: string[], prefix: string, _i
 
 	// First entry gets the prefix
 	const [firstKey, firstValue] = entries[0]!
-	if (typeof firstValue === "object" && !Array.isArray(firstValue)) {
+	if (typeof firstValue === "object" && firstValue !== null && !Array.isArray(firstValue)) {
 		output.push(`${prefix}${firstKey}:`)
 		formatNestedObject(firstValue, output, `${prefix.replace("-", " ")}  `)
 	} else {
@@ -65,7 +65,7 @@ export function formatArrayObject(obj: any, output: string[], prefix: string, _i
 	for (let i = 1; i < entries.length; i++) {
 		const [key, value] = entries[i]!
 		const indent = prefix.replace("-", " ")
-		if (typeof value === "object" && !Array.isArray(value)) {
+		if (typeof value === "object" && value !== null && !Array.isArray(value)) {
 			output.push(`${indent}${key}:`)
 			formatNestedObject(value, output, `${indent}  `)
 		} else {

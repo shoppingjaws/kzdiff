@@ -78,7 +78,7 @@ function handleAddedKeys(
 			for (const item of value) {
 				formatArrayObject(item, output, "    - ", false)
 			}
-		} else if (typeof value === "object" && !Array.isArray(value)) {
+		} else if (typeof value === "object" && value !== null && !Array.isArray(value)) {
 			output.push(`  + one map entry added:`)
 			output.push(`    ${key}:`)
 			formatNestedObject(value, output, "      ")
@@ -114,7 +114,9 @@ function handleModifiedKeys(
 			handleArrayChanges(key, oldVal, newVal, path, resourceKey, includeResourceKey, output)
 		} else if (
 			typeof oldVal === "object" &&
+			oldVal !== null &&
 			typeof newVal === "object" &&
+			newVal !== null &&
 			!Array.isArray(oldVal) &&
 			!Array.isArray(newVal)
 		) {
@@ -378,7 +380,7 @@ function handleRemovedKeys(
 	for (const key of removedKeys) {
 		const value = oldObj[key]
 		output.push(includeResourceKey && resourceKey ? `${path}  (${resourceKey})` : `${path}`)
-		if (typeof value === "object" && !Array.isArray(value)) {
+		if (typeof value === "object" && value !== null && !Array.isArray(value)) {
 			output.push(`  - one map entry removed:`)
 			output.push(`    ${key}:`)
 			formatNestedObject(value, output, "      ")

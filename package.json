@@ -1,6 +1,6 @@
 {
 	"name": "kzdiff",
-	"version": "1.8.2",
+	"version": "1.8.3",
 	"description": "CLI tool for comparing Kustomize build results between branches",
 	"keywords": [
 		"kustomize",
