@@ -1,7 +1,7 @@
 import { $ } from "bun"
-import { mkdtemp } from "node:fs/promises"
-import { join } from "node:path"
+import { mkdtemp, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { createDebugLogger } from "./debug"
 
 interface ErrorWithStderr extends Error {
@@ -11,6 +11,30 @@ interface ErrorWithStderr extends Error {
 interface BuildOptions {
 	ref?: string
 	remote?: string
+}
+
+async function pathExists(path: string): Promise<boolean> {
+	try {
+		await stat(path)
+		return true
+	} catch {
+		return false
+	}
+}
+
+async function cloneRemoteRef(remote: string, ref: string): Promise<string> {
+	const debug = createDebugLogger("cloneRemoteRef")
+	const cleanRemote = remote.replace(/\.git$/, "")
+	const cloneDir = await mkdtemp(join(tmpdir(), "kzdiff-clone-"))
+
+	debug(`Cloning ${cleanRemote} @ ${ref} into ${cloneDir}`)
+
+	await $`git init --quiet ${cloneDir}`.quiet()
+	await $`git -C ${cloneDir} remote add origin ${cleanRemote}`.quiet()
+	await $`git -C ${cloneDir} fetch --depth=1 origin ${ref}`.quiet()
+	await $`git -C ${cloneDir} checkout --quiet FETCH_HEAD`.quiet()
+
+	return cloneDir
 }
 
 export async function kustomizeBuildToTmp(
@@ -29,23 +53,22 @@ export async function kustomizeBuildToTmp(
 	let targetPath = kustomizePath
 
 	try {
-		// If remote is specified, use Kustomize's native remote support
-		if (buildOptions?.remote) {
-			// Format: https://github.com/owner/repo//path/to/dir?ref=branch&submodules=false
-			const cleanRemote = buildOptions.remote.replace(/\.git$/, "")
+		// Clone the remote ref locally so kustomize flags such as
+		// --load-restrictor=LoadRestrictionsNone apply. Kustomize's native
+		// remote-URL fetcher forces LoadRestrictionsRootOnly regardless of flags.
+		if (buildOptions?.remote && buildOptions?.ref) {
+			const cloneDir = await cloneRemoteRef(buildOptions.remote, buildOptions.ref)
 			const cleanPath = kustomizePath.replace(/^\.?\//, "")
-			targetPath = `${cleanRemote}//${cleanPath}`
+			const localTarget = join(cloneDir, cleanPath)
 
-			// Add query parameters
-			const queryParams = []
-			if (buildOptions.ref) {
-				queryParams.push(`ref=${buildOptions.ref}`)
+			if (!(await pathExists(localTarget))) {
+				debug(`Path ${cleanPath} not found in ${buildOptions.ref}, returning empty file`)
+				await Bun.write(outputPath, "")
+				return outputPath
 			}
-			queryParams.push("submodules=false")
 
-			targetPath += `?${queryParams.join("&")}`
-
-			debug(`Using remote URL: ${targetPath}`)
+			targetPath = localTarget
+			debug(`Using cloned local path: ${targetPath}`)
 		} else {
 			debug(`Using local path: ${targetPath}`)
 		}
@@ -68,23 +91,6 @@ export async function kustomizeBuildToTmp(
 
 		return outputPath
 	} catch (error) {
-		// Check if this is a remote build and the directory doesn't exist
-		if (buildOptions?.remote && error instanceof Error && "stderr" in error) {
-			const errorWithStderr = error as ErrorWithStderr
-			if (errorWithStderr.stderr) {
-				const errorMessage = errorWithStderr.stderr.toString().toLowerCase()
-				const notFoundPatterns = ["does not exist", "no such file or directory"]
-
-				const isNotFound = notFoundPatterns.some((pattern) => errorMessage.includes(pattern))
-
-				if (isNotFound) {
-					debug(`Remote directory not found, creating empty file at ${outputPath}`)
-					await Bun.write(outputPath, "")
-					return outputPath
-				}
-			}
-		}
-
 		console.error(`[kustomizeBuildToTmp] Error: ${error}`)
 		if (error instanceof Error && "stderr" in error) {
 			const errorWithStderr = error as ErrorWithStderr
