@@ -44,7 +44,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"js-yaml": "^4.1.0",
+		"js-yaml": "^5.0.0",
 		"jsonpath-plus": "^10.2.0"
 	},
 	"devDependencies": {
